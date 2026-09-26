@@ -1,0 +1,89 @@
+scene "Sakura Lake" @id("scene_sakura_lake") {
+  canvas 1290 2796 background "#DDEFF1";
+
+  rect sky @id("sky") {
+    role "background" "sky";
+    x 0;
+    y 0;
+    width 1290;
+    height 2796;
+    fill "#DDEFF1";
+  }
+
+  path mountains @id("mountains_mid") {
+    role "mountain" "landform" "midground";
+    d "M0 1060 C180 810 340 920 510 720 C670 900 810 770 960 930 C1090 800 1200 880 1290 820 L1290 1550 L0 1550 Z";
+    fill "#AFC8C4";
+  }
+
+  ellipse lake @id("lake") {
+    role "lake" "water" "midground";
+    cx 645;
+    cy 1660;
+    rx 520;
+    ry 270;
+    fill "#72B6C8";
+  }
+
+  rect bridge @id("bridge") {
+    role "bridge" "architecture" "focal-support";
+    x 430;
+    y 1590;
+    width 430;
+    height 56;
+    rx 28;
+    fill "#C58C68";
+  }
+
+  ellipse mascot @id("mascot") {
+    role "mascot" "primary-focal";
+    cx 645;
+    cy 1390;
+    rx 92;
+    ry 108;
+    fill "#3E5558";
+  }
+
+  ellipse tree_left @id("tree_left") {
+    role "tree" "foreground" "framing";
+    cx 195;
+    cy 2080;
+    rx 185;
+    ry 310;
+    fill "#EAA6B2";
+  }
+
+  ellipse tree_right @id("tree_right") {
+    role "tree" "foreground" "framing";
+    cx 1090;
+    cy 2110;
+    rx 150;
+    ry 265;
+    fill "#F3C1C9";
+  }
+
+  path foreground @id("foreground") {
+    role "vegetation" "foreground";
+    d "M0 2200 C220 2100 370 2290 560 2180 C760 2070 910 2250 1080 2150 C1180 2090 1240 2110 1290 2080 L1290 2796 L0 2796 Z";
+    fill "#688E70";
+  }
+
+  text title @id("title") {
+    role "heading" "primary-text";
+    content "Give the next few months a shape.";
+    x 645;
+    y 220;
+    size 58;
+    font "New York";
+    weight "600";
+    align "center";
+    fill "#293538";
+  }
+
+  constrain title.center_x == canvas.center_x @required;
+  constrain mascot.center_x == canvas.center_x @required;
+  constrain bridge.center_x == lake.center_x @strong;
+  constrain bridge.center_y == lake.center_y - 70 @strong;
+  constrain tree_left.right <= mascot.left - 40 @strong;
+  constrain tree_right.left >= mascot.right + 40 @strong;
+}

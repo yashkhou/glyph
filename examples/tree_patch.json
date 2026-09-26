@@ -1,0 +1,7 @@
+{
+  "base_revision": 1,
+  "operations": [
+    {"op":"set","node":"tree_right","path":"props.ry","value":305.0},
+    {"op":"set","node":"tree_right","path":"props.rx","value":142.0}
+  ]
+}

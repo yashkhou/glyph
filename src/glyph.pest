@@ -1,0 +1,23 @@
+WHITESPACE = _{ " " | "\t" | NEWLINE | COMMENT }
+COMMENT = _{ "//" ~ (!NEWLINE ~ ANY)* }
+file = { SOI ~ scene ~ EOI }
+scene = { "scene" ~ string ~ id_attr? ~ "{" ~ scene_item* ~ "}" }
+scene_item = _{ canvas | node | constraint }
+canvas = { "canvas" ~ number ~ number ~ ("background" ~ string)? ~ ";" }
+node = { node_kind ~ ident ~ id_attr? ~ "{" ~ node_item* ~ "}" }
+node_kind = { "rect" | "ellipse" | "path" | "text" | "group" }
+node_item = _{ role | prop }
+role = { "role" ~ string+ ~ ";" }
+prop = { ident ~ prop_value+ ~ ";" }
+prop_value = _{ string | number | ident }
+constraint = { "constrain" ~ prop_ref ~ relation ~ rhs ~ offset? ~ strength ~ ";" }
+prop_ref = @{ ident ~ "." ~ ident }
+rhs = { prop_ref | number }
+offset = { sign ~ number }
+sign = { "+" | "-" }
+strength = { "@required" | "@strong" | "@medium" | "@weak" }
+relation = { "==" | ">=" | "<=" }
+id_attr = { "@id" ~ "(" ~ string ~ ")" }
+ident = @{ (ASCII_ALPHANUMERIC | "_" | "-" )+ }
+number = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+string = @{ "\"" ~ ("\\\"" | !"\"" ~ ANY)* ~ "\"" }

@@ -348,3 +348,33 @@ struct ConstraintRecord: Decodable, Identifiable {
         "\(lhs.display) \(relationSymbol) \(rhs.display)\(displayOffset)"
     }
 }
+
+
+struct ComponentBindingSummary: Decodable, Identifiable {
+    let name: String
+    let valueType: String
+    let target: String
+    let required: Bool
+
+    var id: String { "\(name):\(target)" }
+
+    enum CodingKeys: String, CodingKey {
+        case name, target, required
+        case valueType = "value_type"
+    }
+}
+
+struct ComponentCatalogEntry: Decodable, Identifiable {
+    let name: String
+    let parameters: [ComponentBindingSummary]
+    let slots: [ComponentBindingSummary]
+    let variants: [String]
+    let nodeCount: Int
+
+    var id: String { name }
+
+    enum CodingKeys: String, CodingKey {
+        case name, parameters, slots, variants
+        case nodeCount = "node_count"
+    }
+}

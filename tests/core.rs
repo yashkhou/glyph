@@ -3993,3 +3993,166 @@ fn source_group_edits_fail_closed_on_ownership_and_parent_dependencies() {
         "{invalid_name}"
     );
 }
+
+#[test]
+fn component_catalog_and_instance_source_ops_round_trip() {
+    let src = r##"scene "Component Ops" {
+  canvas 500 300;
+  component card {
+    param w: Length -> bg.width = 100px;
+    param tone: Color -> bg.fill = "#334455";
+    slot title: Text -> label.content = "Default";
+    variant compact { set bg.height 40px; }
+    rect bg @id("bg") { x 0px; y 0px; width 100px; height 60px; fill "#334455"; }
+    text label @id("label") { content "Default"; x 8px; y 24px; size 14px; }
+  }
+}"##;
+    let scene = parse_scene(src, "component-ops.glyph").unwrap();
+    let catalog = glyph::component_catalog(&scene);
+    assert_eq!(catalog.len(), 1);
+    assert_eq!(catalog[0].name, "card");
+    assert_eq!(catalog[0].parameters.len(), 2);
+    assert_eq!(catalog[0].slots.len(), 1);
+    assert_eq!(catalog[0].variants, vec!["compact"]);
+    assert_eq!(catalog[0].node_count, 2);
+    assert!(!catalog[0].parameters[0].required);
+    let edited = glyph::create_source_instance(
+        src,
+        "card",
+        "card1",
+        Some("stable-card"),
+        &[("x".into(), glyph::parse_value_literal("50px").unwrap())],
+        &[("w".into(), glyph::parse_value_literal("120px").unwrap())],
+        &[("title".into(), Value::Text("Hello".into()))],
+        Some("compact"),
+    )
+    .unwrap();
+    assert!(
+        edited.contains("instance card card1 @id(\"stable-card\")"),
+        "{edited}"
+    );
+    assert!(edited.contains("param w 120px;"), "{edited}");
+    assert!(edited.contains("slot title \"Hello\";"), "{edited}");
+    let scene = parse_scene(&edited, "component-ops.glyph").unwrap();
+    let bg = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "stable-card/bg")
+        .unwrap();
+    assert_eq!(bg.authored.props["x"].number(), Some(50.0));
+    assert_eq!(bg.authored.props["width"].number(), Some(120.0));
+    assert_eq!(bg.authored.props["height"].number(), Some(40.0));
+
+    let parameter = glyph::set_source_instance_parameter(
+        &edited,
+        "stable-card",
+        "w",
+        glyph::parse_value_literal("140px").unwrap(),
+    )
+    .unwrap();
+    assert!(parameter.contains("param w 140px;"), "{parameter}");
+    let reparsed = parse_scene(&parameter, "component-ops.glyph").unwrap();
+    assert_eq!(
+        reparsed
+            .nodes
+            .iter()
+            .find(|node| node.id == "stable-card/bg")
+            .unwrap()
+            .authored
+            .props["width"]
+            .number(),
+        Some(140.0)
+    );
+    let removed = glyph::remove_source_instance(&parameter, "stable-card").unwrap();
+    assert!(!removed.contains("instance card card1"), "{removed}");
+    let reparsed = parse_scene(&removed, "component-ops.glyph").unwrap();
+    assert!(
+        reparsed
+            .nodes
+            .iter()
+            .all(|node| !node.id.starts_with("stable-card/"))
+    );
+
+    let collision =
+        glyph::create_source_instance(&edited, "card", "card1", None, &[], &[], &[], None)
+            .unwrap_err();
+    assert!(collision.to_string().contains("collides"), "{collision}");
+}
+
+#[test]
+fn imported_component_instance_edits_validate_project_contracts() {
+    use std::fs;
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("glyph.project.json"), r#"{"version":1}"#).unwrap();
+    fs::create_dir_all(dir.path().join("lib")).unwrap();
+    fs::write(
+        dir.path().join("lib/ui.glyph"),
+        r#"scene "UI" { canvas 10 10; component badge { param w: Length -> bg.width; rect bg @id("bg") { x 0px; y 0px; width 80px; height 30px; } } }"#,
+    ).unwrap();
+    let main_path = dir.path().join("main.glyph");
+    let main = r#"import "lib/ui.glyph" as ui;
+scene "Main" {
+  canvas 320 220;
+}"#;
+    fs::write(&main_path, main).unwrap();
+    let scene = glyph::load_project_scene(&main_path).unwrap();
+    let catalog = glyph::component_catalog(&scene);
+    assert_eq!(catalog.len(), 1);
+    assert_eq!(catalog[0].name, "ui/badge");
+    assert!(catalog[0].parameters[0].required);
+
+    let missing =
+        glyph::create_source_instance(main, "ui/badge", "badge1", None, &[], &[], &[], None)
+            .unwrap();
+    let error = glyph::load_project_scene_with_source(&main_path, &missing).unwrap_err();
+    assert!(
+        error.to_string().contains("missing required parameter w"),
+        "{error}"
+    );
+
+    let valid = glyph::create_source_instance(
+        main,
+        "ui/badge",
+        "badge1",
+        None,
+        &[("x".into(), glyph::parse_value_literal("40px").unwrap())],
+        &[("w".into(), glyph::parse_value_literal("120px").unwrap())],
+        &[],
+        None,
+    )
+    .unwrap();
+    let scene = glyph::load_project_scene_with_source(&main_path, &valid).unwrap();
+    let bg = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "badge1/bg")
+        .unwrap();
+    assert_eq!(bg.authored.props["x"].number(), Some(40.0));
+    assert_eq!(bg.authored.props["width"].number(), Some(120.0));
+
+    let constrained = valid.replace(
+        "\n}",
+        "\n  constrain badge1/bg.left == 40px @required;\n}\n",
+    );
+    glyph::load_project_scene_with_source(&main_path, &constrained).unwrap();
+    let removed = glyph::remove_source_instance(&constrained, "badge1").unwrap();
+    let mut scene = glyph::load_project_scene_with_source(&main_path, &removed).unwrap();
+    let report = solve_scene(&mut scene);
+    assert!(!report.unresolved.is_empty(), "{report:?}");
+
+    let bad_id = glyph::create_source_instance(
+        main,
+        "ui/badge",
+        "badge2",
+        Some("bad/id"),
+        &[],
+        &[],
+        &[],
+        None,
+    )
+    .unwrap_err();
+    assert!(
+        bad_id.to_string().contains("must not contain '/'"),
+        "{bad_id}"
+    );
+}

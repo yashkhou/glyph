@@ -516,3 +516,73 @@ extension GlyphDocumentModelTests {
         XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "card1/bg", "card1/label", "second"])
     }
 }
+
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStudioComponentLibraryAddEditRemoveAndUndo() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-component-library-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("components.glyph")
+        let source = #"""
+        scene "Studio Component Library" {
+          canvas 500 300;
+          component card {
+            param w: Length -> bg.width;
+            slot title: Text -> label.content;
+            rect bg @id("bg") { x 0px; y 0px; width 100px; height 60px; }
+            text label @id("label") { content "Default"; x 8px; y 24px; size 14px; }
+          }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.components.map(\.name), ["card"])
+        XCTAssertEqual(model.components[0].parameters.first?.required, true)
+        XCTAssertEqual(model.components[0].slots.first?.required, true)
+
+        model.addComponentInstance(
+            component: "card",
+            name: "card1",
+            x: "40px",
+            y: "30px",
+            parameters: ["w": "120px"],
+            slots: ["title": "Hello"]
+        )
+        var edited = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(edited.contains("instance card card1"), edited)
+        XCTAssertTrue(edited.contains("param w 120px;"), edited)
+        XCTAssertTrue(edited.contains("slot title \"Hello\";"), edited)
+        XCTAssertEqual(model.displayList?.objectMap["card1/bg"]?.bounds, [40, 30, 120, 60])
+        XCTAssertEqual(model.selectedInstanceOwnerID, "card1")
+
+        model.setInstanceParameter(instance: "card1", parameter: "w", value: "150px")
+        edited = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(edited.contains("param w 150px;"), edited)
+
+        XCTAssertEqual(model.displayList?.objectMap["card1/bg"]?.bounds, [40, 30, 150, 60])
+
+        model.setInstanceSlot(instance: "card1", slot: "title", value: "Updated")
+        edited = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(edited.contains("slot title \"Updated\";"), edited)
+
+        model.removeSelectedInstance()
+        let removed = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertFalse(removed.contains("instance card card1"), removed)
+        XCTAssertNil(model.displayList?.objectMap["card1/bg"])
+        XCTAssertNil(model.selectedInstanceOwnerID)
+        XCTAssertTrue(model.canUndo)
+
+        model.undoSemanticEdit()
+        let restored = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(restored.contains("instance card card1"), restored)
+        XCTAssertTrue(restored.contains("param w 150px;"), restored)
+        XCTAssertTrue(restored.contains("slot title \"Updated\";"), restored)
+        XCTAssertEqual(model.displayList?.objectMap["card1/bg"]?.bounds, [40, 30, 150, 60])
+    }
+}

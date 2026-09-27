@@ -22,6 +22,15 @@ struct ContentView: View {
     @State private var newConstraintOffset = ""
     @State private var newConstraintRelation = "eq"
     @State private var newConstraintStrength = "required"
+    @State private var showComponentLibrary = false
+    @State private var componentSelection = ""
+    @State private var instanceName = ""
+    @State private var instanceX = ""
+    @State private var instanceY = ""
+    @State private var instanceScale = ""
+    @State private var instanceVariant = ""
+    @State private var componentBindingValues: [String: String] = [:]
+    @State private var selectedInstanceParameterValues: [String: String] = [:]
     private let poll = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -49,6 +58,10 @@ struct ContentView: View {
         .alert("Glyph", isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) {
             Button("Dismiss", role: .cancel) { model.error = nil }
         } message: { Text(model.error ?? "") }
+        .sheet(isPresented: $showComponentLibrary) {
+            componentLibrarySheet
+                .frame(minWidth: 520, idealWidth: 600, minHeight: 520, idealHeight: 620)
+        }
     }
 
     private var commandBar: some View {
@@ -73,6 +86,14 @@ struct ContentView: View {
                 .help("Group the selected authored objects (⌘-click in the object ledger to multi-select)")
             Button("Ungroup") { model.ungroupSelected() }
                 .disabled(!model.canUngroupSelection)
+            Button("Components…") {
+                if componentSelection.isEmpty { componentSelection = model.components.first?.name ?? "" }
+                showComponentLibrary = true
+            }
+            .disabled(model.components.isEmpty || model.isDirty)
+            Button("Remove Instance") { model.removeSelectedInstance() }
+                .disabled(!model.canRemoveSelectedInstance)
+                .help("Remove the selected component-instance owner from authored source")
             Button("Send Backward") { model.sendSelectedBackward() }
                 .disabled(!model.canSendBackward)
                 .help("Move the selected directly-authored node one step earlier in source/render order")
@@ -520,6 +541,215 @@ struct ContentView: View {
             }
         }
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.55))
+    }
+
+    private var componentLibrarySelection: ComponentCatalogEntry? {
+        model.components.first(where: { $0.name == componentSelection }) ?? model.components.first
+    }
+
+    private func componentValueBinding(_ key: String) -> Binding<String> {
+        Binding(
+            get: { componentBindingValues[key] ?? "" },
+            set: { componentBindingValues[key] = $0 }
+        )
+    }
+
+    private func selectedParameterBinding(_ key: String) -> Binding<String> {
+        Binding(
+            get: { selectedInstanceParameterValues[key] ?? "" },
+            set: { selectedInstanceParameterValues[key] = $0 }
+        )
+    }
+
+    private var componentAddReady: Bool {
+        guard let component = componentLibrarySelection,
+              !instanceName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        let missingParameter = component.parameters.contains {
+            $0.required && (componentBindingValues["param:\($0.name)"] ?? "").isEmpty
+        }
+        let missingSlot = component.slots.contains {
+            $0.required && (componentBindingValues["slot:\($0.name)"] ?? "").isEmpty
+        }
+        return !missingParameter && !missingSlot && !model.isDirty
+    }
+
+    private var componentLibrarySheet: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("COMPONENT LIBRARY")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    Text("Source-authoritative instances · \(model.components.count) available")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Done") { showComponentLibrary = false }
+            }
+            .padding(16)
+            Divider()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    componentCreateEditor
+                    if model.selectedInstanceOwnerID != nil {
+                        Divider()
+                        selectedInstanceEditor
+                    }
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var componentCreateEditor: some View {
+        if let component = componentLibrarySelection {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("ADD INSTANCE")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    Spacer()
+                    Text("\(component.nodeCount) node\(component.nodeCount == 1 ? "" : "s")")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                Picker("Component", selection: $componentSelection) {
+                    ForEach(model.components) { entry in
+                        Text(entry.name).tag(entry.name)
+                    }
+                }
+                .onChange(of: componentSelection) { _, _ in
+                    componentBindingValues.removeAll()
+                    instanceVariant = ""
+                }
+                TextField("instance name", text: $instanceName)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TextField("x · optional", text: $instanceX).textFieldStyle(.roundedBorder)
+                    TextField("y · optional", text: $instanceY).textFieldStyle(.roundedBorder)
+                    TextField("scale · optional", text: $instanceScale).textFieldStyle(.roundedBorder)
+                }
+                if !component.parameters.isEmpty {
+                    componentBindingEditor(title: "PARAMETERS", prefix: "param", bindings: component.parameters)
+                }
+                if !component.slots.isEmpty {
+                    componentBindingEditor(title: "SLOTS", prefix: "slot", bindings: component.slots)
+                }
+                if !component.variants.isEmpty {
+                    Picker("Variant", selection: $instanceVariant) {
+                        Text("Default").tag("")
+                        ForEach(component.variants, id: \.self) { Text($0).tag($0) }
+                    }
+                }
+                Button("Add through Glyph source") {
+                    var parameters: [String: String] = [:]
+                    var slots: [String: String] = [:]
+                    for binding in component.parameters {
+                        let value = componentBindingValues["param:\(binding.name)"] ?? ""
+                        if !value.isEmpty { parameters[binding.name] = value }
+                    }
+                    for binding in component.slots {
+                        let value = componentBindingValues["slot:\(binding.name)"] ?? ""
+                        if !value.isEmpty { slots[binding.name] = value }
+                    }
+                    model.addComponentInstance(
+                        component: component.name,
+                        name: instanceName.trimmingCharacters(in: .whitespaces),
+                        x: instanceX, y: instanceY, scale: instanceScale,
+                        parameters: parameters, slots: slots,
+                        variant: instanceVariant.isEmpty ? nil : instanceVariant
+                    )
+                    instanceName = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!componentAddReady)
+            }
+        } else {
+            Text("No components are available in this project.")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func componentBindingEditor(
+        title: String,
+        prefix: String,
+        bindings: [ComponentBindingSummary]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(title).font(.system(size: 9, weight: .bold, design: .monospaced))
+            ForEach(bindings) { binding in
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(binding.name + (binding.required ? " *" : ""))
+                            .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        Text("\(binding.valueType) → \(binding.target)")
+                            .font(.system(size: 8.5, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    TextField(binding.required ? "required" : "use default", text: componentValueBinding("\(prefix):\(binding.name)"))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 170)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedInstanceEditor: some View {
+        if let instance = model.selectedInstanceOwnerID,
+           let componentName = model.selectedInstanceComponentName,
+           let component = model.components.first(where: { $0.name == componentName }) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("SELECTED INSTANCE")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        Text("\(instance) · \(componentName)")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Remove", role: .destructive) {
+                        model.removeSelectedInstance()
+                    }
+                    .disabled(!model.canRemoveSelectedInstance)
+                }
+                ForEach(component.parameters) { binding in
+                    HStack {
+                        Text("param \(binding.name)")
+                            .font(.system(size: 10, design: .monospaced))
+                        Spacer()
+                        TextField("new \(binding.valueType) value", text: selectedParameterBinding("param:\(binding.name)"))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 180)
+                        Button("Set") {
+                            let key = "param:\(binding.name)"
+                            let value = selectedInstanceParameterValues[key] ?? ""
+                            model.setInstanceParameter(instance: instance, parameter: binding.name, value: value)
+                        }
+                        .disabled((selectedInstanceParameterValues["param:\(binding.name)"] ?? "").isEmpty)
+                    }
+                }
+                ForEach(component.slots) { binding in
+                    HStack {
+                        Text("slot \(binding.name)")
+                            .font(.system(size: 10, design: .monospaced))
+                        Spacer()
+                        TextField("new \(binding.valueType) value", text: selectedParameterBinding("slot:\(binding.name)"))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 180)
+                        Button("Set") {
+                            let key = "slot:\(binding.name)"
+                            let value = selectedInstanceParameterValues[key] ?? ""
+                            model.setInstanceSlot(instance: instance, slot: binding.name, value: value)
+                        }
+                        .disabled((selectedInstanceParameterValues["slot:\(binding.name)"] ?? "").isEmpty)
+                    }
+                }
+            }
+        }
     }
 
     private var statusBar: some View {

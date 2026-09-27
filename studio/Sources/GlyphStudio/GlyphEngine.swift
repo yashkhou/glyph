@@ -22,6 +22,7 @@ final class GlyphDocumentModel: ObservableObject {
     @Published var lastHandleResizePlan: DirectHandleResizePlan?
     @Published var constraints: [ConstraintRecord] = []
     @Published var sourceHierarchy: [DirectSourceNode] = []
+    @Published var components: [ComponentCatalogEntry] = []
     @Published var selectedConstraintID: String?
 
     private var lastKnownModificationDate: Date?
@@ -63,6 +64,20 @@ final class GlyphDocumentModel: ObservableObject {
     private var selectedSourceIndex: Int? {
         guard let owner = selectedSourceOwner else { return nil }
         return paintHierarchy.firstIndex(where: { $0.id == owner.id })
+    }
+
+    var selectedInstanceOwnerID: String? {
+        guard let owner = selectedSourceOwner, owner.kind.hasPrefix("instance:") else { return nil }
+        return owner.id
+    }
+
+    var selectedInstanceComponentName: String? {
+        guard let owner = selectedSourceOwner, owner.kind.hasPrefix("instance:") else { return nil }
+        return String(owner.kind.dropFirst("instance:".count))
+    }
+
+    var canRemoveSelectedInstance: Bool {
+        selectedInstanceOwnerID != nil && !isDirty
     }
 
     var canSendBackward: Bool {
@@ -154,6 +169,7 @@ final class GlyphDocumentModel: ObservableObject {
             selectedConstraintID = nil
             constraints = []
             sourceHierarchy = []
+            components = []
             lastVisualDiff = nil
             lastManipulationPlan = nil
             lastResizePlan = nil
@@ -283,6 +299,59 @@ final class GlyphDocumentModel: ObservableObject {
         mutateConstraintSource(statusLabel: "Added constraint", selectedConstraintID: nil) {
             input, output in
             ["constraint-add", input.path, lhs, relation, rhs] + options + ["--output", output.path]
+        }
+    }
+
+    func addComponentInstance(
+        component: String,
+        name: String,
+        x: String = "",
+        y: String = "",
+        scale: String = "",
+        parameters: [String: String] = [:],
+        slots: [String: String] = [:],
+        variant: String? = nil
+    ) {
+        var options: [String] = []
+        if !x.isEmpty { options += ["--x", x] }
+        if !y.isEmpty { options += ["--y", y] }
+        if !scale.isEmpty { options += ["--scale", scale] }
+        for key in parameters.keys.sorted() {
+            if let value = parameters[key], !value.isEmpty { options += ["--param", "\(key)=\(value)"] }
+        }
+        for key in slots.keys.sorted() {
+            if let value = slots[key], !value.isEmpty { options += ["--slot", "\(key)=\(value)"] }
+        }
+        if let variant, !variant.isEmpty { options += ["--variant", variant] }
+        mutateComponentSource(statusLabel: "Added component instance \(name)", selectionAfter: name) {
+            input, output in
+            ["instance-add", input.path, component, name] + options + ["--output", output.path]
+        }
+    }
+
+    func removeSelectedInstance() {
+        guard let instance = selectedInstanceOwnerID else { return }
+        mutateComponentSource(statusLabel: "Removed component instance \(instance)", selectionAfter: nil) {
+            input, output in
+            ["instance-remove", input.path, instance, "--output", output.path]
+        }
+    }
+
+    func setInstanceParameter(instance: String, parameter: String, value: String) {
+        guard !parameter.isEmpty, !value.isEmpty else { return }
+        let keepSelection = selectedID
+        mutateComponentSource(statusLabel: "Updated \(instance).\(parameter)", selectionAfter: keepSelection) {
+            input, output in
+            ["instance-param-set", input.path, instance, parameter, value, "--output", output.path]
+        }
+    }
+
+    func setInstanceSlot(instance: String, slot: String, value: String) {
+        guard !slot.isEmpty, !value.isEmpty else { return }
+        let keepSelection = selectedID
+        mutateComponentSource(statusLabel: "Updated \(instance).\(slot)", selectionAfter: keepSelection) {
+            input, output in
+            ["instance-slot-set", input.path, instance, slot, value, "--output", output.path]
         }
     }
 
@@ -582,6 +651,50 @@ final class GlyphDocumentModel: ObservableObject {
         }
     }
 
+    private func mutateComponentSource(
+        statusLabel: String,
+        selectionAfter: String?,
+        arguments: (URL, URL) -> [String]
+    ) {
+        guard let url = sourceURL else { return }
+        guard !isDirty else {
+            status = "Save source edits before editing components"
+            return
+        }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-component-\(UUID().uuidString).glyph")
+        defer {
+            try? FileManager.default.removeItem(at: temporary)
+            try? FileManager.default.removeItem(at: beforeURL)
+        }
+        do {
+            let beforeSource = sourceText
+            try beforeSource.write(to: beforeURL, atomically: true, encoding: .utf8)
+            _ = try runGlyph(arguments(beforeURL, temporary))
+            _ = try runGlyph(["check", temporary.path])
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(beforeSource)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            lastManipulationPlan = nil
+            lastResizePlan = nil
+            lastHandleResizePlan = nil
+            if let selectionAfter {
+                let resolved = displayList?.items.first(where: {
+                    $0.id == selectionAfter || $0.id.hasPrefix(selectionAfter + "/")
+                })?.id
+                if let resolved { select(resolved) } else { clearSelection() }
+            } else {
+                clearSelection()
+            }
+            status = statusLabel
+        } catch {
+            self.error = error.localizedDescription
+            status = "Component edit rejected"
+        }
+    }
+
     private func pushUndo(_ source: String) {
         if undoStack.last != source {
             undoStack.append(source)
@@ -643,6 +756,8 @@ final class GlyphDocumentModel: ObservableObject {
         displayList = try JSONDecoder().decode(DisplayList.self, from: data)
         let hierarchyText = try runGlyph(["hierarchy", url.path])
         sourceHierarchy = try JSONDecoder().decode(HierarchyReport.self, from: Data(hierarchyText.utf8)).nodes
+        let componentsText = try runGlyph(["components", url.path])
+        components = try JSONDecoder().decode([ComponentCatalogEntry].self, from: Data(componentsText.utf8))
         let constraintText = try runGlyph(["constraints", url.path])
         constraints = try JSONDecoder().decode([ConstraintRecord].self, from: Data(constraintText.utf8))
         if let selectedConstraintID,

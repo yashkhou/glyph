@@ -302,10 +302,11 @@ pub fn set_source_property(
     Ok(out)
 }
 
-pub fn set_source_instance_parameter(
+fn set_source_instance_binding(
     source: &str,
     instance_id: &str,
-    parameter: &str,
+    keyword: &str,
+    binding: &str,
     value: Value,
 ) -> Result<String> {
     let (block_start, open, close) = instance_block(source, instance_id)?;
@@ -322,13 +323,13 @@ pub fn set_source_instance_parameter(
             i = skip_line_comment(bytes, i + 2);
             continue;
         }
-        if token_at(body, i, "param") {
-            let mut j = i + "param".len();
+        if token_at(body, i, keyword) {
+            let mut j = i + keyword.len();
             while j < bytes.len() && bytes[j].is_ascii_whitespace() {
                 j += 1;
             }
-            if token_at(body, j, parameter) {
-                j += parameter.len();
+            if token_at(body, j, binding) {
+                j += binding.len();
                 while j < bytes.len() && bytes[j].is_ascii_whitespace() {
                     j += 1;
                 }
@@ -360,16 +361,31 @@ pub fn set_source_instance_parameter(
         .sum::<usize>();
     let header_indent = &header_line[..leading_len];
     let item_indent = format!("{}  ", header_indent);
-    let insertion = format!(
-        "\n{}param {} {};\n{}",
-        item_indent, parameter, replacement, header_indent
-    );
+    let insertion = format!("\n{item_indent}{keyword} {binding} {replacement};\n{header_indent}");
     let mut out = String::with_capacity(source.len() + insertion.len());
     out.push_str(&source[..close]);
     out.push_str(&insertion);
     out.push_str(&source[close..]);
     validate_source_syntax(&out)?;
     Ok(out)
+}
+
+pub fn set_source_instance_parameter(
+    source: &str,
+    instance_id: &str,
+    parameter: &str,
+    value: Value,
+) -> Result<String> {
+    set_source_instance_binding(source, instance_id, "param", parameter, value)
+}
+
+pub fn set_source_instance_slot(
+    source: &str,
+    instance_id: &str,
+    slot: &str,
+    value: Value,
+) -> Result<String> {
+    set_source_instance_binding(source, instance_id, "slot", slot, value)
 }
 
 fn encode_scalar_number(value: f64) -> String {
@@ -609,11 +625,158 @@ pub fn direct_source_nodes(source: &str) -> Result<Vec<DirectSourceNode>> {
         .collect())
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ComponentBindingSummary {
+    pub name: String,
+    pub value_type: crate::model::ValueType,
+    pub target: String,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ComponentCatalogEntry {
+    pub name: String,
+    pub parameters: Vec<ComponentBindingSummary>,
+    pub slots: Vec<ComponentBindingSummary>,
+    pub variants: Vec<String>,
+    pub node_count: usize,
+}
+
+pub fn component_catalog(scene: &crate::model::Scene) -> Vec<ComponentCatalogEntry> {
+    let summarize = |binding: &crate::model::ComponentBinding| ComponentBindingSummary {
+        name: binding.name.clone(),
+        value_type: binding.value_type,
+        target: format!("{}.{}", binding.target.node, binding.target.property),
+        required: binding.default.is_none(),
+    };
+    let mut entries = scene
+        .components
+        .iter()
+        .map(|component| ComponentCatalogEntry {
+            name: component.name.clone(),
+            parameters: component.parameters.iter().map(summarize).collect(),
+            slots: component.slots.iter().map(summarize).collect(),
+            variants: component
+                .variants
+                .iter()
+                .map(|variant| variant.name.clone())
+                .collect(),
+            node_count: component.nodes.len(),
+        })
+        .collect::<Vec<_>>();
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
+    entries
+}
+
 fn valid_source_ident(value: &str) -> bool {
     !value.is_empty()
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'/'))
+}
+
+pub fn create_source_instance(
+    source: &str,
+    component: &str,
+    name: &str,
+    stable_id: Option<&str>,
+    properties: &[(String, Value)],
+    parameters: &[(String, Value)],
+    slots: &[(String, Value)],
+    variant: Option<&str>,
+) -> Result<String> {
+    if !valid_source_ident(component) {
+        return Err(anyhow!(
+            "component {component:?} is not a valid Glyph identifier"
+        ));
+    }
+    if !valid_source_ident(name) || name.contains('/') {
+        return Err(anyhow!(
+            "instance name {name:?} must be a safe top-level Glyph identifier"
+        ));
+    }
+    let stable_id = stable_id.unwrap_or(name);
+    if stable_id.is_empty() || stable_id.contains('/') {
+        return Err(anyhow!(
+            "instance id {stable_id:?} must be non-empty and must not contain '/'"
+        ));
+    }
+    if direct_layer_owners(source)?.iter().any(|owner| {
+        owner.id == stable_id || owner.name == name || owner.id == name || owner.name == stable_id
+    }) {
+        return Err(anyhow!(
+            "instance {name:?} / id {stable_id:?} collides with an existing layer owner"
+        ));
+    }
+    for (binding_name, _) in parameters.iter().chain(slots.iter()) {
+        if !valid_source_ident(binding_name) || binding_name.contains('/') {
+            return Err(anyhow!(
+                "binding name {binding_name:?} is not a safe identifier"
+            ));
+        }
+    }
+    if let Some(variant) = variant
+        && (!valid_source_ident(variant) || variant.contains('/'))
+    {
+        return Err(anyhow!("variant {variant:?} is not a safe identifier"));
+    }
+
+    let id_attr = if stable_id == name {
+        String::new()
+    } else {
+        format!(" @id(\"{}\")", stable_id.replace('"', "\\\""))
+    };
+    let mut declaration = format!("instance {component} {name}{id_attr} {{");
+    for (property, value) in properties {
+        if !valid_source_ident(property) || property.contains('/') {
+            return Err(anyhow!(
+                "instance property {property:?} is not a safe identifier"
+            ));
+        }
+        declaration.push_str(&format!(" {property} {};", encode_value(value)));
+    }
+    for (parameter, value) in parameters {
+        declaration.push_str(&format!(" param {parameter} {};", encode_value(value)));
+    }
+    for (slot, value) in slots {
+        declaration.push_str(&format!(" slot {slot} {};", encode_value(value)));
+    }
+    if let Some(variant) = variant {
+        declaration.push_str(&format!(" variant {variant};"));
+    }
+    declaration.push_str(" }");
+
+    let (_, scene_end) = direct_authored_scene_source_span(source)?;
+    let close = scene_end
+        .checked_sub(1)
+        .ok_or_else(|| anyhow!("invalid scene source span"))?;
+    let line_start = source[..close]
+        .rfind('\n')
+        .map(|index| index + 1)
+        .unwrap_or(0);
+    let closing_indent = if source[line_start..close].trim().is_empty() {
+        &source[line_start..close]
+    } else {
+        ""
+    };
+    let item_indent = format!("{closing_indent}  ");
+    let insertion = format!("{item_indent}{declaration}\n");
+    let mut out = source.to_string();
+    if source[line_start..close].trim().is_empty() {
+        out.insert_str(line_start, &insertion);
+    } else {
+        out.insert_str(close, &format!("\n{insertion}"));
+    }
+    validate_source_syntax(&out)?;
+    Ok(out)
+}
+
+pub fn remove_source_instance(source: &str, instance_id: &str) -> Result<String> {
+    let (span_start, span_end) = direct_authored_instance_source_span(source, instance_id)?;
+    let (start, _, close) = block_from_source_span(source, span_start, span_end, instance_id)?;
+    let out = remove_statement_or_line(source, start, close + 1);
+    validate_source_syntax(&out)?;
+    Ok(out)
 }
 
 fn direct_node_reference(source: &str, requested: &str) -> Result<(String, String, String)> {

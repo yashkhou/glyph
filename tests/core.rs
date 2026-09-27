@@ -2894,3 +2894,153 @@ fn accessibility_properties_fail_closed_on_invalid_values() {
     let err = parse_scene(bad_order, "bad-reading-order.glyph").unwrap_err();
     assert!(err.to_string().contains("non-negative integer"), "{err}");
 }
+
+#[test]
+fn language_diagnostics_report_exact_parse_location_and_semantic_warnings() {
+    let broken = "scene \"Broken\" {\n  canvas 100 100\n}\n";
+    let diagnostics = glyph::diagnose_source(broken, "broken.glyph");
+    assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    assert_eq!(diagnostics[0].code, "glyph.parse");
+    assert_eq!(diagnostics[0].range.start.line, 1);
+    assert_eq!(diagnostics[0].range.start.character, 13);
+
+    let source = r#"scene "Tooling" {
+        canvas 200 120;
+        rect action @id("action") { x 0; y 0; width 20; height 20; interactive "true"; }
+    }"#;
+    let diagnostics = glyph::diagnose_source(source, "tooling.glyph");
+    assert!(
+        diagnostics
+            .iter()
+            .any(|item| { item.code == "glyph.accessibility.missing_accessible_name" }),
+        "{diagnostics:?}"
+    );
+    assert!(
+        diagnostics
+            .iter()
+            .any(|item| { item.code == "glyph.accessibility.small_interactive_target" }),
+        "{diagnostics:?}"
+    );
+}
+
+#[test]
+fn language_completion_is_context_aware_for_nodes_groups_and_constraints() {
+    let source = "scene \"Completion\" {\n  canvas 300 200;\n  rect card {\n    \n  }\n  group stack {\n    member \n  }\n  constrain \n}\n";
+    let node_items = glyph::complete_source(
+        source,
+        glyph::TextPosition {
+            line: 3,
+            character: 4,
+        },
+    );
+    assert!(
+        node_items.iter().any(|item| item.label == "width"),
+        "{node_items:?}"
+    );
+    assert!(
+        node_items.iter().any(|item| item.label == "a11y_label"),
+        "{node_items:?}"
+    );
+
+    let member_items = glyph::complete_source(
+        source,
+        glyph::TextPosition {
+            line: 6,
+            character: 11,
+        },
+    );
+    assert!(
+        member_items.iter().any(|item| item.label == "card"),
+        "{member_items:?}"
+    );
+
+    let constraint_items = glyph::complete_source(
+        source,
+        glyph::TextPosition {
+            line: 8,
+            character: 12,
+        },
+    );
+    assert!(
+        constraint_items.iter().any(|item| item.label == "canvas"),
+        "{constraint_items:?}"
+    );
+    assert!(
+        constraint_items.iter().any(|item| item.label == "card"),
+        "{constraint_items:?}"
+    );
+}
+
+#[test]
+fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
+    fn frame(value: serde_json::Value) -> Vec<u8> {
+        let body = serde_json::to_vec(&value).unwrap();
+        let mut framed = format!("Content-Length: {}\r\n\r\n", body.len()).into_bytes();
+        framed.extend(body);
+        framed
+    }
+    let source = "scene \"LSP\" {\n  canvas 200 120;\n  rect card {\n    \n  }\n}\n";
+    let uri = "file:///tmp/lsp-test.glyph";
+    let messages = [
+        serde_json::json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
+        serde_json::json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"languageId":"glyph","version":1,"text":source}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":uri},"position":{"line":3,"character":4}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":3,"method":"shutdown","params":null}),
+        serde_json::json!({"jsonrpc":"2.0","method":"exit","params":null}),
+    ];
+    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_glyph"))
+        .arg("lsp")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    {
+        use std::io::Write;
+        let stdin = child.stdin.as_mut().unwrap();
+        for message in messages {
+            stdin.write_all(&frame(message)).unwrap();
+        }
+    }
+    drop(child.stdin.take());
+    let output = child.wait_with_output().unwrap();
+    assert!(output.status.success(), "{:?}", output.status);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout.contains("glyph-lsp"), "{stdout}");
+    assert!(
+        stdout.contains("textDocument/publishDiagnostics"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("\"label\":\"width\""), "{stdout}");
+    assert!(
+        stdout.contains("\"id\":3,\"jsonrpc\":\"2.0\",\"result\":null"),
+        "{stdout}"
+    );
+}
+
+#[test]
+fn project_language_diagnostics_resolve_imports_with_unsaved_entry_overlay() {
+    use std::fs;
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("glyph.project.json"), r#"{"version":1}"#).unwrap();
+    fs::write(
+        dir.path().join("library.glyph"),
+        r##"scene "Library" { canvas 10 10; style accent { fill "#112233"; } }"##,
+    )
+    .unwrap();
+    let entry = dir.path().join("main.glyph");
+    fs::write(
+        &entry,
+        r#"import "library.glyph" as ui; scene "Main" { canvas 200 120; }"#,
+    )
+    .unwrap();
+    let overlay = r#"import "library.glyph" as ui;
+scene "Main" {
+  canvas 200 120;
+  rect card @id("card") { use ui/accent; x 20px; y 20px; width 80px; height 50px; }
+}"#;
+    let diagnostics = glyph::diagnose_project_source(&entry, overlay);
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    let scene = glyph::load_project_scene_with_source(&entry, overlay).unwrap();
+    let card = scene.nodes.iter().find(|node| node.id == "card").unwrap();
+    assert_eq!(card.authored.props["fill"].text(), Some("#112233"));
+}

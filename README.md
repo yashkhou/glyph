@@ -76,6 +76,10 @@ glyph render scene.v2.gsir.json --output scene.svg
 glyph render-png scene.v2.gsir.json --output scene.png
 glyph export-pdf scene.v2.gsir.json --output scene.pdf
 glyph conformance scene.v2.gsir.json
+glyph accessibility scene.glyph
+glyph diagnostics scene.glyph
+glyph complete scene.glyph 12 4
+glyph lsp
 glyph targets scene.v2.gsir.json
 glyph drag-plan scene.glyph card 12 -7
 glyph source-drag scene.glyph card 12 -7 --output scene.moved.glyph
@@ -89,7 +93,7 @@ glyph constraint-add scene.glyph card.left ge 0 --strength required --output sce
 
 ## Commander integration
 
-Glyph is registered as the local `glyph-design` Commander plugin with 30 tools spanning scene inspection/querying, revision-safe edits, semantic/visual diffs, runtime states/motion, source round-trip edits, first-class authored constraint query/edit/remove/add operations, constraint-aware drag/resize planning, display-list/object-map inspection, renderer conformance, target strategy, bounded image import, and SVG/PNG/PDF/CommanderDraw export.
+Glyph is registered as the local `glyph-design` Commander plugin for scene inspection/querying, revision-safe edits, semantic/visual diffs, runtime states/motion, source round-trip edits, first-class authored constraint operations, constraint-aware drag/resize planning, display-list/object-map inspection, renderer conformance, target strategy, bounded image import, and SVG/PNG/PDF/CommanderDraw export. Editor-facing language tooling is provided by the same core binary through deterministic `diagnostics`, context-aware `complete`, and stdio `lsp` commands.
 
 The plugin executes the release binary at `target/release/glyph`. PNG and PDF deliberately reuse CommanderDraw rather than introducing another raster engine. Unsupported CommanderDraw semantics fail closed before those exports. Node resolves deterministically from `GLYPH_NODE_BIN` or `NODE_BINARY`, then process `PATH`, then standard Homebrew/system locations.
 
@@ -111,6 +115,7 @@ The plugin executes the release binary at `target/release/glyph`. PNG and PDF de
 - direct manipulation v1 edits free authored coordinates, translates paths through affine `translate_x`/`translate_y` without rewriting `d`, co-edits compatible equality offsets, preserves inequalities as feasibility guards, and inverts unambiguous typed component bindings back into instance `param` edits; semantic rect/image/ellipse/text-frame resize follows the same source-authoritative contract; Studio exposes explicit edge/corner handles, structural groups own validated membership and translate their leaf members semantically, and unrotated paths support source-authoritative affine resize including compatible translate relations and explicit component affine bindings; unsupported inverse intent fails closed;
 - authored constraints are first-class source edit targets: relation, strength and offset can be changed surgically; constraints can be removed or added; semantic reparsing rejects dimensionally invalid edits; Studio surfaces constraint badges and inspector controls instead of forcing raw-text surgery;
 - Studio semantic undo/redo restores validated source snapshots rather than canvas-only state;
+- language tooling reuses the production parser/solver/accessibility contracts: diagnostics preserve parse locations, completions are context-aware, project files resolve local imports against unsaved entry overlays, and `glyph lsp` exposes full-document-sync diagnostics/completion over standard stdio JSON-RPC;
 - CoreText typography, bounded Vision import, sampled motion, and the native Studio are present as scoped v1 implementations.
 
 ## Deliberately postponed

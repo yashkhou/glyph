@@ -3,7 +3,9 @@ pub mod bridge;
 pub mod conformance;
 pub mod diff;
 pub mod display_list;
+pub mod language_service;
 mod linear_solver;
+pub mod lsp;
 pub mod manipulation;
 pub mod migration;
 pub mod model;
@@ -31,6 +33,10 @@ pub use display_list::{
     DisplayAccessibility, DisplayCanvas, DisplayItem, DisplayList, DisplayPrimitive, DisplayStyle,
     DisplayTransform, ObjectRecord, build_display_list,
 };
+pub use language_service::{
+    CompletionItem, DiagnosticSeverity, LanguageDiagnostic, TextPosition, TextRange,
+    complete_source, diagnose_project_source, diagnose_source,
+};
 pub use manipulation::{
     ComponentParameterEdit, ConstraintOffsetEdit, DirectHandleResizePlan, DirectManipulationPlan,
     DirectResizePlan, ManipulationAxis, ManipulationBlock, ManipulationEdit, ResizeEdit,
@@ -42,7 +48,7 @@ pub use migration::{MigrationReport, load_gsir_str, migrate_gsir_value};
 pub use model::*;
 pub use parser::{parse_scene, parse_value_literal};
 pub use patch::{PatchOperation, TransactionResult, apply_transaction};
-pub use project::{discover_project_root, load_project_scene};
+pub use project::{discover_project_root, load_project_scene, load_project_scene_with_source};
 pub use render::{render_svg, write_svg};
 pub use runtime::{AssertionResult, evaluate_assertions, sample_motion, scene_in_state};
 pub use solver::{SolveReport, solve_scene};

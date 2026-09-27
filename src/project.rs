@@ -205,7 +205,12 @@ fn merge_exports(
     Ok(())
 }
 
-fn load_recursive(path: &Path, root: &Path, stack: &mut Vec<PathBuf>) -> Result<Scene> {
+fn load_recursive<'a>(
+    path: &Path,
+    root: &Path,
+    stack: &mut Vec<PathBuf>,
+    overlay: Option<(&'a Path, &'a str)>,
+) -> Result<Scene> {
     let path = path
         .canonicalize()
         .with_context(|| format!("resolve Glyph source {}", path.display()))?;
@@ -228,15 +233,21 @@ fn load_recursive(path: &Path, root: &Path, stack: &mut Vec<PathBuf>) -> Result<
         ));
     }
     stack.push(path.clone());
-    let source = fs::read_to_string(&path)
-        .with_context(|| format!("read Glyph source {}", path.display()))?;
+    let source = if let Some((overlay_path, overlay_source)) = overlay
+        && overlay_path == path
+    {
+        overlay_source.to_string()
+    } else {
+        fs::read_to_string(&path)
+            .with_context(|| format!("read Glyph source {}", path.display()))?
+    };
     let imports = parse_import_specs(&source)?;
     let mut seeded_styles = BTreeMap::new();
     let mut seeded_paints = BTreeMap::new();
     let mut seeded_components = Vec::new();
     for import in &imports {
         let target = resolve_import(&path, import, root)?;
-        let imported_scene = load_recursive(&target, root, stack)?;
+        let imported_scene = load_recursive(&target, root, stack, overlay)?;
         let (styles, paints, components) = qualify_exports(&imported_scene, &import.alias);
         merge_exports(
             &mut seeded_styles,
@@ -265,5 +276,13 @@ pub fn load_project_scene(entry: &Path) -> Result<Scene> {
     let entry = entry
         .canonicalize()
         .with_context(|| format!("resolve entry {}", entry.display()))?;
-    load_recursive(&entry, &root, &mut Vec::new())
+    load_recursive(&entry, &root, &mut Vec::new(), None)
+}
+
+pub fn load_project_scene_with_source(entry: &Path, source: &str) -> Result<Scene> {
+    let root = discover_project_root(entry)?;
+    let entry = entry
+        .canonicalize()
+        .with_context(|| format!("resolve entry {}", entry.display()))?;
+    load_recursive(&entry, &root, &mut Vec::new(), Some((&entry, source)))
 }

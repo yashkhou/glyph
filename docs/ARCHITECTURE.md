@@ -129,6 +129,14 @@ Glyph separates **visual export** from **semantic code generation**. They are no
 - SwiftUI and Web/Canvas are currently `strategy_only` semantic-codegen targets. No emitter exists yet, so Glyph reports them as unsupported rather than generating misleading native code.
 - A future codegen emitter must operate on a documented display-list subset and must never claim arbitrary illustration can round-trip as readable native UI code.
 
+### Language service and LSP
+
+Glyph editor tooling is a projection of the production compiler contracts, not a second parser. `src/language_service.rs` turns the real parser, solver and accessibility audit into deterministic diagnostics and supplies context-aware completions for scene items, node properties, group members and constraint references. Parse diagnostics retain source line/column information; semantic diagnostics reuse solver and accessibility findings.
+
+For real project files, diagnostics resolve the normal local import graph while overlaying the unsaved entry-document text through `load_project_scene_with_source`; imported components/styles/paints therefore keep the same project-boundary and namespace rules as compilation. `glyph diagnostics` exposes the diagnostic model as JSON and `glyph complete` exposes completion candidates directly.
+
+`glyph lsp` implements a stdio JSON-RPC Language Server Protocol baseline with initialize/shutdown/exit, full-document open/change/close synchronization, publishDiagnostics and completion. The first LSP contract is intentionally synchronous and dependency-light. Incremental text sync, references/rename, code actions and richer semantic navigation are future tooling layers; they must reuse the canonical semantic model rather than inventing editor-only meaning.
+
 ## Commander API
 
 The v0.1 plugin exposes read and mutation operations separately:
@@ -158,4 +166,4 @@ Completed after the fixed effectiveness gate:
 7. renderer conformance plus the target strategy contract, with production PDF export and fail-closed unsupported semantics;
 8. Phase F direct-manipulation v1: source-authoritative drag/resize planning, compatible multi-equality co-editing, inequality feasibility guards, affine path translation and unrotated path resize without rewriting `d`, rect/image/ellipse semantic resize, unambiguous typed component-parameter inverse editing, first-class constraint query/edit/add/remove with Studio badges and controls, native Studio handles, and validated source-snapshot undo/redo.
 
-Remaining Phase F hardening is now concentrated on rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, LSP/autocomplete/diagnostics, assets/project packaging, fuzzing, performance/security/release work, and the still-gated SwiftUI/Web Canvas semantic emitters. Accessibility semantics and auditing are implemented across GSIR/display-list/SVG/CommanderDraw metadata.
+Remaining Phase F hardening is now concentrated on rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, richer LSP navigation/actions beyond the implemented diagnostics/completion baseline, assets/project packaging, fuzzing, performance/security/release work, and the still-gated SwiftUI/Web Canvas semantic emitters. Accessibility semantics/auditing and the first production-linked language-service/LSP baseline are implemented.

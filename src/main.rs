@@ -229,6 +229,15 @@ enum Command {
     Accessibility {
         input: PathBuf,
     },
+    Diagnostics {
+        input: PathBuf,
+    },
+    Complete {
+        input: PathBuf,
+        line: u32,
+        character: u32,
+    },
+    Lsp,
     Targets {
         input: PathBuf,
     },
@@ -359,10 +368,10 @@ fn main() -> Result<()> {
             "constraints":["==",">=","<=","required","strong","medium","weak"],
             "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
             "runtime":["assertions","named-states","sampled-motion","deterministic-text-layout"],
-            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import"],
-            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","language-diagnostics","context-completion","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import"],
+            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","language-diagnostics-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
             "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source"],
-            "status":{"vision":"bounded Apple Vision OCR + rectangle importer v1; not arbitrary photo reconstruction","motion":"declarative sampled motion v1","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
+            "status":{"vision":"bounded Apple Vision OCR + rectangle importer v1; not arbitrary photo reconstruction","motion":"declarative sampled motion v1","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions and stdio LSP v1 with full-document sync; project diagnostics resolve local imports while overlaying unsaved entry source; rename/references/code actions are not implemented yet","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
             let mut scene = load_project_scene(&input)?;
@@ -747,6 +756,24 @@ fn main() -> Result<()> {
             let scene = load_scene(&input)?;
             print_json(&accessibility_report(&scene))
         }
+        Command::Diagnostics { input } => {
+            require_glyph_source(&input, "diagnostics")?;
+            let source = fs::read_to_string(&input)?;
+            print_json(&glyph::diagnose_project_source(&input, &source))
+        }
+        Command::Complete {
+            input,
+            line,
+            character,
+        } => {
+            require_glyph_source(&input, "complete")?;
+            let source = fs::read_to_string(&input)?;
+            print_json(&glyph::complete_source(
+                &source,
+                glyph::TextPosition { line, character },
+            ))
+        }
+        Command::Lsp => glyph::lsp::run_stdio(),
         Command::Targets { input } => {
             let scene = load_scene(&input)?;
             print_json(&target_strategy_report(&scene))

@@ -108,6 +108,26 @@ grep -q '60.0' "$TMP_VERIFY/path-resized-map.json"
 "$BIN" targets exports/sakura_lake.verify-patched.gsir.json
 "$BIN" export-pdf exports/sakura_lake.verify-patched.gsir.json --output exports/sakura_lake.verify-patched.pdf
 [[ "$(head -c 5 exports/sakura_lake.verify-patched.pdf)" == "%PDF-" ]]
+cat > "$TMP_VERIFY/codegen.glyph" <<'EOF'
+scene "Codegen Verify" {
+  canvas 320 200 background "#f8f8f8";
+  rect card @id("card") { x 20; y 30; width 180; height 90; rx 12; fill "#336699"; a11y_label "Card"; }
+  text title @id("title") { content "Glyph codegen"; x 24; y 160; size 22; max_width 220; fill "#111111"; }
+}
+EOF
+"$BIN" export-swiftui "$TMP_VERIFY/codegen.glyph" --output "$TMP_VERIFY/GlyphSceneView.swift"
+"$BIN" export-web-canvas "$TMP_VERIFY/codegen.glyph" --output "$TMP_VERIFY/glyph-scene.mjs"
+grep -q 'accessibilityIdentifier("card")' "$TMP_VERIFY/GlyphSceneView.swift"
+grep -q 'export const glyphObjects' "$TMP_VERIFY/glyph-scene.mjs"
+xcrun swiftc -typecheck "$TMP_VERIFY/GlyphSceneView.swift"
+NODE_BIN="${GLYPH_NODE_BIN:-${NODE_BINARY:-$(command -v node || true)}}"
+if [[ -z "$NODE_BIN" ]]; then
+  for candidate in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node; do
+    [[ -x "$candidate" ]] && NODE_BIN="$candidate" && break
+  done
+fi
+[[ -n "$NODE_BIN" && -x "$NODE_BIN" ]]
+"$NODE_BIN" --check "$TMP_VERIFY/glyph-scene.mjs"
 "$BIN" apply exports/sakura_lake.gsir.json 1 '[{"op":"set_canvas","width":1600}]' --output exports/sakura_lake.wide.gsir.json
 "$BIN" why exports/sakura_lake.wide.gsir.json title
 (cd "$ROOT/studio" && GLYPH_BIN="$BIN" swift test)

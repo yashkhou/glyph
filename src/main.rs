@@ -8,10 +8,10 @@ use glyph::{
     diff::diff_scenes,
     evaluate_assertions, load_project_scene, plan_direct_manipulation, plan_direct_resize,
     plan_direct_resize_from_handle, query, remove_source_constraint, remove_source_group,
-    remove_source_group_member, render_svg, renderer_conformance_report, sample_motion,
-    scene_in_state, set_source_constraint_offset, set_source_constraint_relation,
-    set_source_constraint_strength, set_source_property, solve_scene, target_strategy_report,
-    validate_project,
+    remove_source_group_member, render_svg, render_swiftui, render_web_canvas,
+    renderer_conformance_report, sample_motion, scene_in_state, set_source_constraint_offset,
+    set_source_constraint_relation, set_source_constraint_strength, set_source_property,
+    solve_scene, target_strategy_report, validate_project,
     vision::{VisionImportMode, default_vision_helper, import_image_to_glyph_with_mode},
     write_project_bundle,
 };
@@ -74,6 +74,16 @@ enum Command {
         output: PathBuf,
         #[arg(long, default_value = "/Users/joshuakhoury/Projects/CommanderDraw")]
         commander_draw: PathBuf,
+    },
+    ExportSwiftui {
+        input: PathBuf,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    ExportWebCanvas {
+        input: PathBuf,
+        #[arg(short, long)]
+        output: PathBuf,
     },
     ImportImage {
         input: PathBuf,
@@ -408,10 +418,10 @@ fn main() -> Result<()> {
             "constraints":["==",">=","<=","required","strong","medium","weak"],
             "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
             "runtime":["assertions","named-states","sampled-motion","motion-delay-repeat-alternate","deterministic-spring-presets","deterministic-text-layout"],
-            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","language-diagnostics","context-completion","language-definition","language-references","safe-node-rename","language-code-actions","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle"],
-            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","language-diagnostics-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","project-bundle-directory","project-bundle-manifest-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","language-diagnostics","context-completion","language-definition","language-references","safe-node-rename","language-code-actions","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle","semantic-swiftui-codegen","semantic-web-canvas-codegen"],
+            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","language-diagnostics-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","project-bundle-directory","project-bundle-manifest-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json","swiftui-source","web-canvas-module"],
             "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source","project assets content-addressed by SHA-256","project bundles preserve transitive source paths and verify before publish"],
-            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, definition/references, fail-closed top-level node rename, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project diagnostics resolve local imports while overlaying unsaved entry source; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
+            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, definition/references, fail-closed top-level node rename, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project diagnostics resolve local imports while overlaying unsaved entry source; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw; SwiftUI and Web Canvas emitters are implemented for a documented bounded display-list subset and fail closed on unsupported semantics","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
             let mut scene = load_project_scene(&input)?;
@@ -478,6 +488,20 @@ fn main() -> Result<()> {
             glyph::bridge::export_pdf_with_commander_draw(&scene, &output, &commander_draw)?;
             print_json(
                 &serde_json::json!({"ok":true,"output":output,"format":"pdf","backend":"CommanderDraw","scene":scene.id,"revision":scene.revision}),
+            )
+        }
+        Command::ExportSwiftui { input, output } => {
+            let scene = load_scene(&input)?;
+            fs::write(&output, render_swiftui(&scene)?)?;
+            print_json(
+                &serde_json::json!({"ok":true,"output":output,"format":"swiftui","scene":scene.id,"revision":scene.revision}),
+            )
+        }
+        Command::ExportWebCanvas { input, output } => {
+            let scene = load_scene(&input)?;
+            fs::write(&output, render_web_canvas(&scene)?)?;
+            print_json(
+                &serde_json::json!({"ok":true,"output":output,"format":"web_canvas","scene":scene.id,"revision":scene.revision}),
             )
         }
         Command::ImportImage {

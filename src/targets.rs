@@ -1,4 +1,5 @@
 use crate::{
+    codegen::{SemanticCodegenTarget, assess_semantic_codegen},
     conformance::{ConformanceStatus, renderer_conformance_report},
     model::Scene,
 };
@@ -55,16 +56,28 @@ fn from_backend(
     }
 }
 
-fn planned_codegen(target: &str, lowering: &str, note: &str) -> TargetAssessment {
+fn codegen_target(
+    scene: &Scene,
+    target: SemanticCodegenTarget,
+    lowering: &str,
+) -> TargetAssessment {
+    let assessment = assess_semantic_codegen(scene, target);
+    let mut notes = assessment.warnings;
+    notes.extend(
+        assessment
+            .issues
+            .into_iter()
+            .map(|issue| format!("{}.{}: {}", issue.item_id, issue.feature, issue.detail)),
+    );
     TargetAssessment {
-        target: target.into(),
+        target: target.as_str().into(),
         class: TargetClass::SemanticCodegen,
-        availability: TargetAvailability::StrategyOnly,
-        status: ConformanceStatus::Unsupported,
+        availability: TargetAvailability::Implemented,
+        status: assessment.status,
         lowering: lowering.into(),
-        semantic_identity_preserved: false,
+        semantic_identity_preserved: true,
         editable_output: true,
-        notes: vec![note.into()],
+        notes,
     }
 }
 
@@ -120,15 +133,15 @@ pub fn target_strategy_report(scene: &Scene) -> TargetStrategyReport {
         false,
         pdf_notes,
     );
-    let swiftui = planned_codegen(
-        "swiftui",
-        "display_list subset -> native SwiftUI view code",
-        "strategy defined but no emitter is implemented; arbitrary illustration must not be presented as readable native UI code",
+    let swiftui = codegen_target(
+        scene,
+        SemanticCodegenTarget::SwiftUi,
+        "display_list bounded subset -> native SwiftUI view code",
     );
-    let web_canvas = planned_codegen(
-        "web_canvas",
-        "display_list subset -> browser Canvas/Web rendering code",
-        "strategy defined but no semantic codegen emitter is implemented; SVG remains the current Web visual-export target",
+    let web_canvas = codegen_target(
+        scene,
+        SemanticCodegenTarget::WebCanvas,
+        "display_list bounded subset -> editable browser Canvas module",
     );
 
     TargetStrategyReport {

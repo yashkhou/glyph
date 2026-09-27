@@ -1,5 +1,6 @@
 pub mod accessibility;
 pub mod bridge;
+pub mod codegen;
 pub mod conformance;
 pub mod diff;
 pub mod display_list;
@@ -25,6 +26,10 @@ pub use accessibility::{
     AccessibilityIssue, AccessibilityReport, AccessibilitySeverity, accessibility_report,
 };
 pub use bridge::commander_draw_document;
+pub use codegen::{
+    SemanticCodegenAssessment, SemanticCodegenTarget, assess_semantic_codegen, render_swiftui,
+    render_web_canvas,
+};
 pub use conformance::{
     BackendConformance, ConformanceIssue, ConformanceStatus, RendererConformanceReport,
     renderer_conformance_report,

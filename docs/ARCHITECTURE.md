@@ -135,8 +135,8 @@ Glyph separates **visual export** from **semantic code generation**. They are no
 
 - Implemented visual exports: SVG, CommanderDraw JSON, PNG, and PDF. PDF lowers through CommanderDraw and fails closed when that bridge cannot preserve required visual semantics.
 - `glyph targets <scene>` reports target class, implementation availability, current conformance, lowering path, semantic-ID preservation, editability, and limitations for the actual scene.
-- SwiftUI and Web/Canvas are currently `strategy_only` semantic-codegen targets. No emitter exists yet, so Glyph reports them as unsupported rather than generating misleading native code.
-- A future codegen emitter must operate on a documented display-list subset and must never claim arbitrary illustration can round-trip as readable native UI code.
+- SwiftUI and Web Canvas are implemented semantic-codegen targets over the bounded subset documented in `docs/CODEGEN.md`. `glyph targets` evaluates the actual scene and reports `exact`, `degraded`, or `unsupported`; emitters refuse unsupported semantics rather than flattening them into misleading native code.
+- Codegen currently covers rect/ellipse/group/basic-text scenes with simple solid styling and stable identity. Paths, images, affine transforms, clips/masks, gradients, advanced typography and interaction contracts remain outside the subset until their native lowering/ownership contracts are explicit. Arbitrary illustration is never claimed to round-trip as readable native UI code.
 
 ### Language service and LSP
 
@@ -164,7 +164,7 @@ The v0.1 plugin exposes read and mutation operations separately:
 - validate: `check`, `project-check`, `test`, `conformance`;
 - mutate/package: `compile`, `project-bundle`, `apply`, `source-set`, `source-drag`, `source-resize`, `constraint-edit`, `constraint-remove`, `constraint-add`;
 - compare: `diff`, `visual-diff`;
-- render/export: display-list JSON, SVG, PNG, PDF, CommanderDraw JSON.
+- render/export: display-list JSON, SVG, PNG, PDF, CommanderDraw JSON, plus fail-closed bounded SwiftUI and Web Canvas source emitters.
 
 Normal agent workflow:
 
@@ -188,6 +188,7 @@ Completed after the fixed effectiveness gate:
 10. production-linked diagnostics/completion plus UTF-16-safe incremental LSP navigation, rename and accessibility quick fixes;
 11. structured/hybrid/auto Vision import so ambiguous imagery preserves raster pixels instead of inventing vector certainty;
 12. content-addressed local project assets plus deterministic staged project bundles over the transitive source dependency closure;
-13. deterministic mutation robustness tests, 5,000-node performance budgets, containment/hash security gates and checksummed macOS release packaging.
+13. deterministic mutation robustness tests, 5,000-node performance budgets, containment/hash security gates and checksummed macOS release packaging;
+14. bounded SwiftUI and Web Canvas semantic code generation with per-scene conformance assessment, stable identity and fail-closed unsupported semantics.
 
-Remaining Phase F work is now concentrated on contracts that still require explicit product decisions rather than missing baseline infrastructure: rotated-path inverse resize, mixed/ambiguous component-constraint ownership, deeper Studio hierarchy/component operations, cross-file symbol indexing and advanced editor refactors, long-lived incremental solver sessions, cross-platform typography parity, and the still-gated SwiftUI/Web Canvas semantic emitters. Arbitrary photo-to-clean-vector reconstruction, a public remote package registry and learned aesthetic constraints as authority remain deliberate non-goals unless the product scope changes.
+Remaining Phase F work is now concentrated on contracts that still require explicit product decisions rather than missing baseline infrastructure: rotated-path inverse resize, mixed/ambiguous component-constraint ownership, deeper Studio hierarchy/component operations, cross-file symbol indexing and advanced editor refactors, long-lived incremental solver sessions, cross-platform typography parity, and broader native-code subsets only where target semantics remain explicit. Arbitrary photo-to-clean-vector reconstruction, a public remote package registry and learned aesthetic constraints as authority remain deliberate non-goals unless the product scope changes.

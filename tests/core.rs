@@ -1795,18 +1795,100 @@ fn target_strategy_separates_visual_exports_from_semantic_codegen() {
     assert_eq!(target("pdf").class, glyph::TargetClass::VisualExport);
     assert_eq!(
         target("swiftui").availability,
-        glyph::TargetAvailability::StrategyOnly
+        glyph::TargetAvailability::Implemented
     );
     assert_eq!(target("swiftui").class, glyph::TargetClass::SemanticCodegen);
-    assert_eq!(
-        target("swiftui").status,
-        glyph::ConformanceStatus::Unsupported
-    );
+    assert_eq!(target("swiftui").status, glyph::ConformanceStatus::Exact);
     assert_eq!(
         target("web_canvas").availability,
-        glyph::TargetAvailability::StrategyOnly
+        glyph::TargetAvailability::Implemented
+    );
+    assert_eq!(target("web_canvas").status, glyph::ConformanceStatus::Exact);
+}
+
+#[test]
+fn semantic_codegen_emits_bounded_swiftui_and_web_canvas() {
+    let src = r##"scene "Codegen" {
+        canvas 320 200 background "#f8f8f8";
+        rect card @id("card") { x 20; y 30; width 180; height 90; rx 12; fill "#336699"; stroke "#112233"; stroke_width 2; a11y_label "Card"; }
+        ellipse badge @id("badge") { cx 245; cy 75; rx 24; ry 24; fill "#ffcc00"; }
+    }"##;
+    let mut scene = parse_scene(src, "codegen.glyph").unwrap();
+    solve_scene(&mut scene);
+
+    let swift = glyph::render_swiftui(&scene).unwrap();
+    assert!(
+        swift.contains("public struct GlyphSceneView: View"),
+        "{swift}"
+    );
+    assert!(
+        swift.contains("RoundedRectangle(cornerRadius: 12)"),
+        "{swift}"
+    );
+    assert!(
+        swift.contains(".accessibilityIdentifier(\"card\")"),
+        "{swift}"
+    );
+    assert!(
+        swift.contains(".accessibilityLabel(Text(\"Card\"))"),
+        "{swift}"
+    );
+
+    let web = glyph::render_web_canvas(&scene).unwrap();
+    assert!(web.contains("export const glyphObjects ="), "{web}");
+    assert!(web.contains("export function renderGlyph(canvas)"), "{web}");
+    assert!(
+        web.contains("glyphRoundRect(ctx, 20, 30, 180, 90, 12)"),
+        "{web}"
+    );
+    assert!(web.contains("ctx.ellipse(245, 75, 24, 24"), "{web}");
+}
+
+#[test]
+fn semantic_codegen_reports_text_degradation_without_guessing_unsupported_features() {
+    let src = r##"scene "Codegen Text" {
+        canvas 320 180;
+        text title @id("title") { content "Glyph codegen"; x 24; y 64; size 22; max_width 220; fill "#111111"; a11y_label "Glyph codegen"; }
+    }"##;
+    let mut scene = parse_scene(src, "codegen-text.glyph").unwrap();
+    solve_scene(&mut scene);
+    let swift = glyph::assess_semantic_codegen(&scene, glyph::SemanticCodegenTarget::SwiftUi);
+    let web = glyph::assess_semantic_codegen(&scene, glyph::SemanticCodegenTarget::WebCanvas);
+    assert_eq!(swift.status, glyph::ConformanceStatus::Degraded);
+    assert_eq!(web.status, glyph::ConformanceStatus::Degraded);
+    assert!(
+        glyph::render_swiftui(&scene)
+            .unwrap()
+            .contains("Text(\"Glyph codegen\")")
+    );
+    assert!(
+        glyph::render_web_canvas(&scene)
+            .unwrap()
+            .contains("ctx.fillText(`Glyph codegen`")
     );
 }
+
+#[test]
+fn semantic_codegen_fails_closed_outside_documented_subset() {
+    let src = r##"scene "Unsupported Codegen" {
+        canvas 240 160;
+        path mark @id("mark") { d "M10 10 L100 10 L60 90 Z"; fill "#223344"; }
+    }"##;
+    let mut scene = parse_scene(src, "codegen-path.glyph").unwrap();
+    solve_scene(&mut scene);
+    let assessment = glyph::assess_semantic_codegen(&scene, glyph::SemanticCodegenTarget::SwiftUi);
+    assert_eq!(assessment.status, glyph::ConformanceStatus::Unsupported);
+    assert!(
+        assessment
+            .issues
+            .iter()
+            .any(|issue| issue.item_id == "mark" && issue.feature == "path")
+    );
+    let err = glyph::render_swiftui(&scene).unwrap_err();
+    assert!(err.to_string().contains("mark.path"), "{err}");
+    assert!(glyph::render_web_canvas(&scene).is_err());
+}
+
 #[test]
 fn pdf_export_fails_closed_before_backend_for_unsupported_masks() {
     let src = r##"scene "Masked PDF" {

@@ -18,8 +18,9 @@ constraint resolution
 resolved geometry / backend-neutral display list
     ├── SVG
     ├── CommanderDraw .draw.json
-    ├── CommanderDraw renderer → PNG
-    └── CommanderDraw export → PDF
+    ├── CommanderDraw renderer → PNG / PDF
+    ├── bounded semantic subset → SwiftUI source
+    └── bounded semantic subset → Web Canvas module
 ```
 
 ## Why Glyph exists
@@ -77,6 +78,8 @@ glyph diff scene.gsir.json scene.v2.gsir.json
 glyph render scene.v2.gsir.json --output scene.svg
 glyph render-png scene.v2.gsir.json --output scene.png
 glyph export-pdf scene.v2.gsir.json --output scene.pdf
+glyph export-swiftui scene.glyph --output GlyphSceneView.swift
+glyph export-web-canvas scene.glyph --output scene.mjs
 glyph conformance scene.v2.gsir.json
 glyph accessibility scene.glyph
 glyph diagnostics scene.glyph
@@ -100,7 +103,7 @@ glyph group-remove scene.glyph hero --output scene.ungrouped.glyph
 
 ## Commander integration
 
-Glyph is registered as the local `glyph-design` Commander plugin for scene inspection/querying, revision-safe edits, semantic/visual diffs, runtime states/motion, source round-trip edits, first-class authored constraint operations, constraint-aware drag/resize planning, display-list/object-map inspection, renderer conformance, target strategy, bounded image import, and SVG/PNG/PDF/CommanderDraw export. Editor-facing language tooling is provided by the same core binary through deterministic `diagnostics`, context-aware `complete`, and stdio `lsp` commands.
+Glyph is registered as the local `glyph-design` Commander plugin for scene inspection/querying, revision-safe edits, semantic/visual diffs, runtime states/motion, source round-trip edits, first-class authored constraint operations, constraint-aware drag/resize planning, display-list/object-map inspection, renderer conformance, target strategy, bounded image import, visual SVG/PNG/PDF/CommanderDraw export, and bounded SwiftUI/Web Canvas semantic code generation. Editor-facing language tooling is provided by the same core binary through deterministic `diagnostics`, context-aware `complete`, and stdio `lsp` commands.
 
 The plugin executes the release binary at `target/release/glyph`. PNG and PDF deliberately reuse CommanderDraw rather than introducing another raster engine. Unsupported CommanderDraw semantics fail closed before those exports. Node resolves deterministically from `GLYPH_NODE_BIN` or `NODE_BINARY`, then process `PATH`, then standard Homebrew/system locations.
 
@@ -119,6 +122,7 @@ The plugin executes the release binary at `target/release/glyph`. PNG and PDF de
 - deterministic SVG preserves IDs/roles;
 - the same display list lowers to CommanderDraw, PNG and fail-closed PDF output;
 - renderer conformance and target reports distinguish exact/degraded/unsupported behavior instead of implying pixel equivalence;
+- SwiftUI and Web Canvas semantic emitters operate only on a documented display-list subset, preserve stable identity, classify CoreText-to-target text as degraded, and fail closed instead of embedding unsupported path/image/transform/paint semantics;
 - direct manipulation v1 edits free authored coordinates, translates paths through affine `translate_x`/`translate_y` without rewriting `d`, co-edits compatible equality offsets, preserves inequalities as feasibility guards, and inverts unambiguous typed component bindings back into instance `param` edits; semantic rect/image/ellipse/text-frame resize follows the same source-authoritative contract; Studio exposes explicit edge/corner handles, structural groups own validated membership and translate their leaf members semantically, and unrotated paths support source-authoritative affine resize including compatible translate relations and explicit component affine bindings; unsupported inverse intent fails closed;
 - authored constraints are first-class source edit targets: relation, strength and offset can be changed surgically; constraints can be removed or added; semantic reparsing rejects dimensionally invalid edits; Studio surfaces constraint badges and inspector controls instead of forcing raw-text surgery;
 - Studio semantic undo/redo restores validated source snapshots rather than canvas-only state; multi-selection can now create and remove structural groups through the same source-authoritative transaction path;
@@ -129,6 +133,6 @@ The plugin executes the release binary at `target/release/glyph`. PNG and PDF de
 
 ## Deliberately postponed
 
-Arbitrary-photo-to-clean-vector reconstruction, rotated-path inverse resize, mixed component-constraint path ownership, semantic SwiftUI/Web Canvas code generation, learned aesthetic constraints as authority, a public package ecosystem, and a huge semantic ontology remain out of scope. Accessibility semantics/auditing, text-frame resize, multi-edge handles, structural group membership/translation, compatible path-constraint resize, and explicit component-owned affine path inversion are now implemented where the source contract is unambiguous.
+Arbitrary-photo-to-clean-vector reconstruction, rotated-path inverse resize, mixed component-constraint path ownership, native-code generation for arbitrary path/image/transform/paint scenes, learned aesthetic constraints as authority, a public package ecosystem, and a huge semantic ontology remain out of scope. Accessibility semantics/auditing, text-frame resize, multi-edge handles, structural group membership/translation, compatible path-constraint resize, explicit component-owned affine path inversion, and bounded SwiftUI/Web Canvas semantic codegen are implemented where the source contract is unambiguous. See `docs/CODEGEN.md` for the exact native-code subset.
 
 See `docs/ARCHITECTURE.md` and `docs/MVP.md`.

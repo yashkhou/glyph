@@ -1,7 +1,8 @@
 use crate::language_service::{
     DiagnosticSeverity, LanguageDiagnostic, TextPosition, TextRange, byte_offset_at_position,
     code_actions, complete_source, definition_at, diagnose_project_source, diagnose_source,
-    node_symbol_at_position, references_at, rename_node_at,
+    node_symbol_at_position, project_definition_at, project_references_at, references_at,
+    rename_node_at, rename_project_symbol_at,
 };
 use anyhow::{Context, Result, anyhow};
 use serde_json::{Value, json};
@@ -171,6 +172,44 @@ fn workspace_edit(uri: &str, edits: impl IntoIterator<Item = (TextRange, String)
     json!({"changes":Value::Object(changes)})
 }
 
+fn file_uri(path: &std::path::Path) -> String {
+    let mut encoded = String::from("file://");
+    for byte in path.to_string_lossy().as_bytes() {
+        if byte.is_ascii_alphanumeric() || matches!(*byte, b'/' | b'-' | b'_' | b'.' | b'~') {
+            encoded.push(*byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
+}
+
+fn document_overlays(documents: &BTreeMap<String, String>) -> BTreeMap<PathBuf, String> {
+    documents
+        .iter()
+        .filter_map(|(uri, source)| {
+            let path = file_uri_path(uri)?;
+            let canonical = path.canonicalize().ok()?;
+            Some((canonical, source.clone()))
+        })
+        .collect()
+}
+
+fn project_workspace_edit(edits: Vec<crate::language_service::ProjectSourceTextEdit>) -> Value {
+    let mut grouped = BTreeMap::<String, Vec<Value>>::new();
+    for edit in edits {
+        grouped
+            .entry(file_uri(std::path::Path::new(&edit.path)))
+            .or_default()
+            .push(json!({"range":edit.range,"newText":edit.new_text}));
+    }
+    let changes = grouped
+        .into_iter()
+        .map(|(uri, edits)| (uri, Value::Array(edits)))
+        .collect::<serde_json::Map<_, _>>();
+    json!({"changes":Value::Object(changes)})
+}
+
 fn diagnostics_from_code_action(params: &Value) -> Vec<LanguageDiagnostic> {
     params["context"]["diagnostics"]
         .as_array()
@@ -183,6 +222,115 @@ fn diagnostics_from_code_action(params: &Value) -> Vec<LanguageDiagnostic> {
             range: range_from_json(&item["range"]),
         })
         .collect()
+}
+
+fn range_contains(range: TextRange, position: TextPosition) -> bool {
+    (position.line > range.start.line
+        || (position.line == range.start.line && position.character >= range.start.character))
+        && (position.line < range.end.line
+            || (position.line == range.end.line && position.character <= range.end.character))
+}
+
+fn definition_result(
+    documents: &BTreeMap<String, String>,
+    uri: &str,
+    position: TextPosition,
+) -> Result<Value, String> {
+    let source = documents
+        .get(uri)
+        .ok_or_else(|| "document is not open".to_string())?;
+    if let Some(reference) = definition_at(source, position) {
+        return Ok(json!({"uri":uri,"range":reference.range}));
+    }
+    let Some(path) = file_uri_path(uri) else {
+        return Ok(Value::Null);
+    };
+    let overlays = document_overlays(documents);
+    Ok(project_definition_at(&path, source, position, &overlays)?
+        .map(|location| json!({"uri":file_uri(std::path::Path::new(&location.path)),"range":location.range}))
+        .unwrap_or(Value::Null))
+}
+
+fn references_result(
+    documents: &BTreeMap<String, String>,
+    uri: &str,
+    position: TextPosition,
+    include_declaration: bool,
+) -> Result<Value, String> {
+    let source = documents
+        .get(uri)
+        .ok_or_else(|| "document is not open".to_string())?;
+    if node_symbol_at_position(source, position).is_some() {
+        let references = references_at(source, position, include_declaration)
+            .into_iter()
+            .map(|reference| json!({"uri":uri,"range":reference.range}))
+            .collect::<Vec<_>>();
+        return Ok(Value::Array(references));
+    }
+    let Some(path) = file_uri_path(uri) else {
+        return Ok(Value::Array(vec![]));
+    };
+    let overlays = document_overlays(documents);
+    let references = project_references_at(&path, source, position, include_declaration, &overlays)?
+        .into_iter()
+        .map(|location| {
+            json!({"uri":file_uri(std::path::Path::new(&location.path)),"range":location.range})
+        })
+        .collect::<Vec<_>>();
+    Ok(Value::Array(references))
+}
+
+fn prepare_rename_result(
+    documents: &BTreeMap<String, String>,
+    uri: &str,
+    position: TextPosition,
+) -> Result<Value, String> {
+    let source = documents
+        .get(uri)
+        .ok_or_else(|| "document is not open".to_string())?;
+    if let Some((symbol, range)) = node_symbol_at_position(source, position) {
+        return Ok(json!({"range":range,"placeholder":symbol}));
+    }
+    let Some(path) = file_uri_path(uri) else {
+        return Ok(Value::Null);
+    };
+    let canonical = path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?;
+    let overlays = document_overlays(documents);
+    let references = project_references_at(&path, source, position, true, &overlays)?;
+    Ok(references
+        .into_iter()
+        .find(|location| {
+            std::path::Path::new(&location.path) == canonical
+                && range_contains(location.range, position)
+        })
+        .map(|location| json!({"range":location.range,"placeholder":location.name}))
+        .unwrap_or(Value::Null))
+}
+
+fn rename_result(
+    documents: &BTreeMap<String, String>,
+    uri: &str,
+    position: TextPosition,
+    new_name: &str,
+) -> Result<Value, String> {
+    let source = documents
+        .get(uri)
+        .ok_or_else(|| "document is not open".to_string())?;
+    if node_symbol_at_position(source, position).is_some() {
+        let plan = rename_node_at(source, position, new_name)?;
+        return Ok(workspace_edit(
+            uri,
+            plan.edits
+                .into_iter()
+                .map(|edit| (edit.range, edit.new_text)),
+        ));
+    }
+    let path = file_uri_path(uri).ok_or_else(|| "rename requires a file URI".to_string())?;
+    let overlays = document_overlays(documents);
+    let plan = rename_project_symbol_at(&path, source, position, new_name, &overlays)?;
+    Ok(project_workspace_edit(plan.edits))
 }
 
 pub fn run_stdio() -> Result<()> {
@@ -286,12 +434,12 @@ pub fn run_stdio() -> Result<()> {
                 if let Some(id) = id {
                     let uri = text_document_uri(&params).unwrap_or_default();
                     let position = position_from_json(&params["position"]);
-                    let result = documents
-                        .get(uri)
-                        .and_then(|source| definition_at(source, position))
-                        .map(|reference| json!({"uri":uri,"range":reference.range}))
-                        .unwrap_or(Value::Null);
-                    write_message(&mut writer, &response(id, result))?;
+                    match definition_result(&documents, uri, position) {
+                        Ok(result) => write_message(&mut writer, &response(id, result))?,
+                        Err(message) => {
+                            write_message(&mut writer, &error_response(id, -32602, &message))?
+                        }
+                    }
                 }
             }
             "textDocument/references" => {
@@ -301,28 +449,24 @@ pub fn run_stdio() -> Result<()> {
                     let include_declaration = params["context"]["includeDeclaration"]
                         .as_bool()
                         .unwrap_or(true);
-                    let result = documents
-                        .get(uri)
-                        .map(|source| {
-                            references_at(source, position, include_declaration)
-                                .into_iter()
-                                .map(|reference| json!({"uri":uri,"range":reference.range}))
-                                .collect::<Vec<_>>()
-                        })
-                        .unwrap_or_default();
-                    write_message(&mut writer, &response(id, Value::Array(result)))?;
+                    match references_result(&documents, uri, position, include_declaration) {
+                        Ok(result) => write_message(&mut writer, &response(id, result))?,
+                        Err(message) => {
+                            write_message(&mut writer, &error_response(id, -32602, &message))?
+                        }
+                    }
                 }
             }
             "textDocument/prepareRename" => {
                 if let Some(id) = id {
                     let uri = text_document_uri(&params).unwrap_or_default();
                     let position = position_from_json(&params["position"]);
-                    let result = documents
-                        .get(uri)
-                        .and_then(|source| node_symbol_at_position(source, position))
-                        .map(|(symbol, range)| json!({"range":range,"placeholder":symbol}))
-                        .unwrap_or(Value::Null);
-                    write_message(&mut writer, &response(id, result))?;
+                    match prepare_rename_result(&documents, uri, position) {
+                        Ok(result) => write_message(&mut writer, &response(id, result))?,
+                        Err(message) => {
+                            write_message(&mut writer, &error_response(id, -32602, &message))?
+                        }
+                    }
                 }
             }
             "textDocument/rename" => {
@@ -330,25 +474,11 @@ pub fn run_stdio() -> Result<()> {
                     let uri = text_document_uri(&params).unwrap_or_default();
                     let position = position_from_json(&params["position"]);
                     let new_name = params["newName"].as_str().unwrap_or_default();
-                    let result = documents.get(uri).map(|source| {
-                        rename_node_at(source, position, new_name).map(|plan| {
-                            workspace_edit(
-                                uri,
-                                plan.edits
-                                    .into_iter()
-                                    .map(|edit| (edit.range, edit.new_text)),
-                            )
-                        })
-                    });
-                    match result {
-                        Some(Ok(edit)) => write_message(&mut writer, &response(id, edit))?,
-                        Some(Err(message)) => {
+                    match rename_result(&documents, uri, position, new_name) {
+                        Ok(edit) => write_message(&mut writer, &response(id, edit))?,
+                        Err(message) => {
                             write_message(&mut writer, &error_response(id, -32602, &message))?
                         }
-                        None => write_message(
-                            &mut writer,
-                            &error_response(id, -32602, "document is not open"),
-                        )?,
                     }
                 }
             }
@@ -418,5 +548,57 @@ mod tests {
             apply_content_changes("scene \"Old\" { canvas 1 1; }", &changes).unwrap(),
             "scene \"New\" { canvas 10 10; }"
         );
+    }
+
+    #[test]
+    fn project_lsp_navigation_and_rename_return_cross_file_workspace_edits() {
+        use std::fs;
+
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("glyph.project.json"), r#"{"version":1}"#).unwrap();
+        let library = dir.path().join("library.glyph");
+        let main = dir.path().join("main.glyph");
+        let library_source = r#"scene "Library" {
+  canvas 100 100;
+  component badge { rect bg { x 0; y 0; width 40; height 20; } }
+}"#;
+        let main_source = r#"import "library.glyph" as ui;
+scene "Main" {
+  canvas 200 120;
+  instance ui/badge card { x 20; y 20; }
+}"#;
+        fs::write(&library, library_source).unwrap();
+        fs::write(&main, main_source).unwrap();
+        let library = library.canonicalize().unwrap();
+        let main = main.canonicalize().unwrap();
+        let library_uri = file_uri(&library);
+        let main_uri = file_uri(&main);
+        let documents = BTreeMap::from([
+            (library_uri.clone(), library_source.to_string()),
+            (main_uri.clone(), main_source.to_string()),
+        ]);
+        let position = TextPosition {
+            line: 3,
+            character: 11,
+        };
+
+        let definition = definition_result(&documents, &main_uri, position).unwrap();
+        assert_eq!(definition["uri"], library_uri);
+        assert_eq!(definition["range"]["start"]["line"], 2);
+
+        let references = references_result(&documents, &main_uri, position, true).unwrap();
+        let refs = references.as_array().unwrap();
+        assert_eq!(refs.len(), 2, "{references}");
+        assert!(refs.iter().any(|reference| reference["uri"] == library_uri));
+        assert!(refs.iter().any(|reference| reference["uri"] == main_uri));
+
+        let prepared = prepare_rename_result(&documents, &main_uri, position).unwrap();
+        assert_eq!(prepared["placeholder"], "ui/badge");
+
+        let rename = rename_result(&documents, &main_uri, position, "chip").unwrap();
+        let changes = rename["changes"].as_object().unwrap();
+        assert_eq!(changes.len(), 2, "{rename}");
+        assert_eq!(changes[&library_uri][0]["newText"], "chip");
+        assert_eq!(changes[&main_uri][0]["newText"], "ui/chip");
     }
 }

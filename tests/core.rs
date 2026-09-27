@@ -3401,6 +3401,168 @@ fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
 }
 
 #[test]
+fn project_language_navigation_and_rename_follow_transitive_component_namespaces() {
+    use std::{collections::BTreeMap, fs};
+
+    fn position_of(source: &str, needle: &str) -> glyph::TextPosition {
+        let offset = source.find(needle).expect("needle");
+        let before = &source[..offset];
+        let line = before.bytes().filter(|byte| *byte == b'\n').count() as u32;
+        let line_start = before.rfind('\n').map(|index| index + 1).unwrap_or(0);
+        let character = source[line_start..offset]
+            .chars()
+            .map(|ch| ch.len_utf16() as u32)
+            .sum();
+        glyph::TextPosition { line, character }
+    }
+
+    let dir = tempfile::tempdir().unwrap();
+    let lib = dir.path().join("lib");
+    fs::create_dir_all(&lib).unwrap();
+    fs::write(dir.path().join("glyph.project.json"), r#"{"version":1}"#).unwrap();
+    let base = lib.join("base.glyph");
+    let mid = lib.join("mid.glyph");
+    let main = dir.path().join("main.glyph");
+    fs::write(
+        &base,
+        r##"scene "Base" { canvas 100 100; component badge { rect bg @id("bg") { x 0; y 0; width 60; height 24; } } }"##,
+    )
+    .unwrap();
+    fs::write(
+        &mid,
+        r#"import "base.glyph" as base; scene "Mid" { canvas 100 100; instance base/badge preview { x 5; y 5; } }"#,
+    )
+    .unwrap();
+    let main_source = r#"import "lib/mid.glyph" as ui;
+scene "Main" {
+  canvas 300 200;
+  instance ui/base/badge card { x 20; y 30; }
+}"#;
+    fs::write(&main, main_source).unwrap();
+    let position = position_of(main_source, "ui/base/badge");
+    let overlays = BTreeMap::new();
+
+    let definition = glyph::project_definition_at(&main, main_source, position, &overlays)
+        .unwrap()
+        .expect("component definition");
+    assert_eq!(
+        std::path::Path::new(&definition.path),
+        base.canonicalize().unwrap()
+    );
+    assert_eq!(definition.name, "badge");
+    assert_eq!(definition.kind, glyph::ProjectSymbolKind::Component);
+    assert!(definition.declaration);
+
+    let references =
+        glyph::project_references_at(&main, main_source, position, true, &overlays).unwrap();
+    assert_eq!(references.len(), 3, "{references:?}");
+    assert_eq!(
+        references
+            .iter()
+            .filter(|reference| reference.declaration)
+            .count(),
+        1
+    );
+
+    let plan =
+        glyph::rename_project_symbol_at(&main, main_source, position, "chip", &overlays).unwrap();
+    assert_eq!(plan.symbol, "badge");
+    assert_eq!(plan.kind, glyph::ProjectSymbolKind::Component);
+    assert_eq!(plan.edits.len(), 3, "{plan:?}");
+    for path in [&base, &mid, &main] {
+        let canonical = path.canonicalize().unwrap();
+        let source = fs::read_to_string(path).unwrap();
+        let edits = plan
+            .edits
+            .iter()
+            .filter(|edit| std::path::Path::new(&edit.path) == canonical)
+            .map(|edit| glyph::SourceTextEdit {
+                range: edit.range,
+                new_text: edit.new_text.clone(),
+            })
+            .collect::<Vec<_>>();
+        let edited = glyph::apply_source_text_edits(&source, &edits).unwrap();
+        fs::write(path, edited).unwrap();
+    }
+    let base_after = fs::read_to_string(&base).unwrap();
+    let mid_after = fs::read_to_string(&mid).unwrap();
+    let main_after = fs::read_to_string(&main).unwrap();
+    assert!(base_after.contains("component chip"), "{base_after}");
+    assert!(mid_after.contains("instance base/chip"), "{mid_after}");
+    assert!(main_after.contains("instance ui/base/chip"), "{main_after}");
+    glyph::load_project_scene(&main).unwrap();
+}
+
+#[test]
+fn project_language_navigation_indexes_imported_styles_paints_and_open_overlays() {
+    use std::{collections::BTreeMap, fs};
+
+    fn position_of(source: &str, needle: &str) -> glyph::TextPosition {
+        let offset = source.find(needle).expect("needle");
+        let before = &source[..offset];
+        let line = before.bytes().filter(|byte| *byte == b'\n').count() as u32;
+        let line_start = before.rfind('\n').map(|index| index + 1).unwrap_or(0);
+        glyph::TextPosition {
+            line,
+            character: source[line_start..offset]
+                .chars()
+                .map(|ch| ch.len_utf16() as u32)
+                .sum(),
+        }
+    }
+
+    let dir = tempfile::tempdir().unwrap();
+    fs::write(dir.path().join("glyph.project.json"), r#"{"version":1}"#).unwrap();
+    let library = dir.path().join("library.glyph");
+    let main = dir.path().join("main.glyph");
+    let library_disk = r##"scene "Library" {
+  canvas 100 100;
+  style accent { fill "#112233"; }
+  paint glow linear { from 0% 0%; to 100% 0%; stop 0% "#000000"; stop 100% "#ffffff"; }
+}"##;
+    fs::write(&library, library_disk).unwrap();
+    let main_source = r#"import "library.glyph" as ui;
+scene "Main" {
+  canvas 200 120;
+  rect card { use ui/accent; x 10; y 10; width 80; height 50; fill_paint ui/glow; }
+}"#;
+    fs::write(&main, main_source).unwrap();
+
+    let style_position = position_of(main_source, "ui/accent");
+    let paint_position = position_of(main_source, "ui/glow");
+    let overlays = BTreeMap::new();
+    let style = glyph::project_definition_at(&main, main_source, style_position, &overlays)
+        .unwrap()
+        .expect("style definition");
+    let paint = glyph::project_definition_at(&main, main_source, paint_position, &overlays)
+        .unwrap()
+        .expect("paint definition");
+    assert_eq!(style.kind, glyph::ProjectSymbolKind::Style);
+    assert_eq!(style.name, "accent");
+    assert_eq!(paint.kind, glyph::ProjectSymbolKind::Paint);
+    assert_eq!(paint.name, "glow");
+
+    let overlay_source = library_disk.replace("style accent", "style highlight");
+    let mut overlay_map = BTreeMap::new();
+    overlay_map.insert(library.canonicalize().unwrap(), overlay_source);
+    assert!(
+        glyph::project_definition_at(&main, main_source, style_position, &overlay_map)
+            .unwrap()
+            .is_none(),
+        "stale ui/accent reference must not resolve through an unsaved renamed declaration"
+    );
+
+    let main_overlay = main_source.replace("ui/accent", "ui/highlight");
+    let highlight_position = position_of(&main_overlay, "ui/highlight");
+    let definition =
+        glyph::project_definition_at(&main, &main_overlay, highlight_position, &overlay_map)
+            .unwrap()
+            .expect("overlay style definition");
+    assert_eq!(definition.name, "highlight");
+    assert_eq!(definition.kind, glyph::ProjectSymbolKind::Style);
+}
+
+#[test]
 fn project_language_diagnostics_resolve_imports_with_unsaved_entry_overlay() {
     use std::fs;
     let dir = tempfile::tempdir().unwrap();

@@ -2,13 +2,14 @@ use crate::{
     accessibility::accessibility_report,
     model::Scene,
     parser::{parse_import_specs, parse_scene, parse_scene_with_environment},
-    project::load_project_scene_with_source,
+    project::{discover_project_root, load_project_scene_with_source},
     solver::solve_scene,
 };
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    path::Path,
+    fs,
+    path::{Path, PathBuf},
 };
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -63,6 +64,37 @@ pub struct SourceTextEdit {
 pub struct RenamePlan {
     pub symbol: String,
     pub edits: Vec<SourceTextEdit>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum ProjectSymbolKind {
+    Component,
+    Style,
+    Paint,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProjectSymbolLocation {
+    pub path: String,
+    pub name: String,
+    pub kind: ProjectSymbolKind,
+    pub range: TextRange,
+    pub declaration: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProjectSourceTextEdit {
+    pub path: String,
+    pub range: TextRange,
+    pub new_text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ProjectRenamePlan {
+    pub symbol: String,
+    pub kind: ProjectSymbolKind,
+    pub edits: Vec<ProjectSourceTextEdit>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -711,6 +743,398 @@ pub fn apply_source_text_edits(source: &str, edits: &[SourceTextEdit]) -> Result
         previous_start = start;
     }
     Ok(edited)
+}
+
+#[derive(Debug, Clone)]
+struct ProjectOccurrence {
+    kind: ProjectSymbolKind,
+    raw_name: String,
+    range: TextRange,
+    start: usize,
+    end: usize,
+    declaration: bool,
+}
+
+#[derive(Debug, Clone)]
+struct ProjectDocumentIndex {
+    path: PathBuf,
+    imports: BTreeMap<String, PathBuf>,
+    occurrences: Vec<ProjectOccurrence>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct ResolvedProjectSymbol {
+    path: PathBuf,
+    kind: ProjectSymbolKind,
+    name: String,
+}
+
+fn project_occurrences(source: &str) -> Vec<ProjectOccurrence> {
+    let tokens = lex_tokens(source);
+    let mut occurrences = Vec::new();
+    for index in 1..tokens.len() {
+        let previous = tokens[index - 1].text.as_str();
+        let (kind, declaration) = match previous {
+            "component" => (Some(ProjectSymbolKind::Component), true),
+            "style" => (Some(ProjectSymbolKind::Style), true),
+            "paint" => (Some(ProjectSymbolKind::Paint), true),
+            "instance" => (Some(ProjectSymbolKind::Component), false),
+            "use" => (Some(ProjectSymbolKind::Style), false),
+            "fill_paint" | "stroke_paint" => (Some(ProjectSymbolKind::Paint), false),
+            _ => (None, false),
+        };
+        let Some(kind) = kind else { continue };
+        let token = &tokens[index];
+        if matches!(token.text.as_str(), "{" | "}" | "." | ";") {
+            continue;
+        }
+        occurrences.push(ProjectOccurrence {
+            kind,
+            raw_name: token.text.clone(),
+            range: range_for_byte_span(source, token.start, token.end),
+            start: token.start,
+            end: token.end,
+            declaration,
+        });
+    }
+    occurrences
+}
+
+fn collect_glyph_files(
+    root: &Path,
+    directory: &Path,
+    out: &mut Vec<PathBuf>,
+) -> Result<(), String> {
+    let entries = fs::read_dir(directory).map_err(|error| {
+        format!(
+            "read Glyph project directory {}: {error}",
+            directory.display()
+        )
+    })?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("read Glyph project entry: {error}"))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("read file type {}: {error}", path.display()))?;
+        if file_type.is_dir() {
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if name.starts_with('.')
+                || matches!(name.as_ref(), "target" | "exports" | "node_modules")
+            {
+                continue;
+            }
+            collect_glyph_files(root, &path, out)?;
+            if out.len() > 1024 {
+                return Err(format!(
+                    "Glyph project symbol index exceeds 1024 source files under {}",
+                    root.display()
+                ));
+            }
+        } else if path.extension().and_then(|value| value.to_str()) == Some("glyph") {
+            out.push(
+                path.canonicalize()
+                    .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?,
+            );
+        }
+    }
+    Ok(())
+}
+
+fn overlay_source(
+    path: &Path,
+    current_path: &Path,
+    current_source: &str,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<String, String> {
+    if path == current_path {
+        return Ok(current_source.to_string());
+    }
+    if let Some(source) = overlays.get(path) {
+        return Ok(source.clone());
+    }
+    fs::read_to_string(path)
+        .map_err(|error| format!("read Glyph source {}: {error}", path.display()))
+}
+
+fn build_project_index(
+    current_path: &Path,
+    current_source: &str,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<BTreeMap<PathBuf, ProjectDocumentIndex>, String> {
+    let current_path = current_path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", current_path.display()))?;
+    let root = discover_project_root(&current_path).map_err(|error| format!("{error:#}"))?;
+    let mut files = Vec::new();
+    collect_glyph_files(&root, &root, &mut files)?;
+    if !files.contains(&current_path) {
+        files.push(current_path.clone());
+    }
+    files.sort();
+    files.dedup();
+
+    let mut index = BTreeMap::new();
+    for path in files {
+        let source = overlay_source(&path, &current_path, current_source, overlays)?;
+        let mut imports = BTreeMap::new();
+        for import in parse_import_specs(&source).map_err(|error| format!("{error:#}"))? {
+            let requested = Path::new(&import.path);
+            if requested.is_absolute()
+                || requested.extension().and_then(|value| value.to_str()) != Some("glyph")
+            {
+                return Err(format!("invalid Glyph import path {}", import.path));
+            }
+            let parent = path
+                .parent()
+                .ok_or_else(|| format!("Glyph source {} has no parent", path.display()))?;
+            let target = parent.join(requested).canonicalize().map_err(|error| {
+                format!(
+                    "resolve import {} from {}: {error}",
+                    import.path,
+                    path.display()
+                )
+            })?;
+            if !target.starts_with(&root) {
+                return Err(format!(
+                    "import {} escapes Glyph project root {}",
+                    import.path,
+                    root.display()
+                ));
+            }
+            imports.insert(import.alias, target);
+        }
+        index.insert(
+            path.clone(),
+            ProjectDocumentIndex {
+                path,
+                occurrences: project_occurrences(&source),
+                imports,
+            },
+        );
+    }
+    Ok(index)
+}
+
+fn resolve_project_name(
+    index: &BTreeMap<PathBuf, ProjectDocumentIndex>,
+    path: &Path,
+    kind: ProjectSymbolKind,
+    raw_name: &str,
+    visiting: &mut BTreeSet<PathBuf>,
+) -> Option<ResolvedProjectSymbol> {
+    let document = index.get(path)?;
+    if document.occurrences.iter().any(|occurrence| {
+        occurrence.declaration && occurrence.kind == kind && occurrence.raw_name == raw_name
+    }) {
+        return Some(ResolvedProjectSymbol {
+            path: document.path.clone(),
+            kind,
+            name: raw_name.to_string(),
+        });
+    }
+    let (alias, rest) = raw_name.split_once('/')?;
+    let target = document.imports.get(alias)?;
+    if !visiting.insert(target.clone()) {
+        return None;
+    }
+    let resolved = resolve_project_name(index, target, kind, rest, visiting);
+    visiting.remove(target);
+    resolved
+}
+
+fn resolved_occurrence(
+    index: &BTreeMap<PathBuf, ProjectDocumentIndex>,
+    path: &Path,
+    occurrence: &ProjectOccurrence,
+) -> Option<ResolvedProjectSymbol> {
+    if occurrence.declaration {
+        return Some(ResolvedProjectSymbol {
+            path: path.to_path_buf(),
+            kind: occurrence.kind,
+            name: occurrence.raw_name.clone(),
+        });
+    }
+    let mut visiting = BTreeSet::from([path.to_path_buf()]);
+    resolve_project_name(
+        index,
+        path,
+        occurrence.kind,
+        &occurrence.raw_name,
+        &mut visiting,
+    )
+}
+
+fn project_occurrence_at(source: &str, position: TextPosition) -> Option<ProjectOccurrence> {
+    let offset = byte_offset_at_position(source, position);
+    project_occurrences(source)
+        .into_iter()
+        .find(|occurrence| offset >= occurrence.start && offset <= occurrence.end)
+}
+
+fn project_locations_for_target(
+    index: &BTreeMap<PathBuf, ProjectDocumentIndex>,
+    target: &ResolvedProjectSymbol,
+    include_declaration: bool,
+) -> Vec<ProjectSymbolLocation> {
+    let mut locations = Vec::new();
+    for (path, document) in index {
+        for occurrence in &document.occurrences {
+            if !include_declaration && occurrence.declaration {
+                continue;
+            }
+            if resolved_occurrence(index, path, occurrence).as_ref() != Some(target) {
+                continue;
+            }
+            locations.push(ProjectSymbolLocation {
+                path: path.display().to_string(),
+                name: occurrence.raw_name.clone(),
+                kind: occurrence.kind,
+                range: occurrence.range,
+                declaration: occurrence.declaration,
+            });
+        }
+    }
+    locations.sort_by(|a, b| {
+        (
+            &a.path,
+            a.range.start.line,
+            a.range.start.character,
+            !a.declaration,
+        )
+            .cmp(&(
+                &b.path,
+                b.range.start.line,
+                b.range.start.character,
+                !b.declaration,
+            ))
+    });
+    locations
+}
+
+pub fn project_definition_at(
+    path: &Path,
+    source: &str,
+    position: TextPosition,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<Option<ProjectSymbolLocation>, String> {
+    let path = path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?;
+    let Some(occurrence) = project_occurrence_at(source, position) else {
+        return Ok(None);
+    };
+    let index = build_project_index(&path, source, overlays)?;
+    let Some(target) = resolved_occurrence(&index, &path, &occurrence) else {
+        return Ok(None);
+    };
+    Ok(project_locations_for_target(&index, &target, true)
+        .into_iter()
+        .find(|location| location.declaration))
+}
+
+pub fn project_references_at(
+    path: &Path,
+    source: &str,
+    position: TextPosition,
+    include_declaration: bool,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<Vec<ProjectSymbolLocation>, String> {
+    let path = path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?;
+    let Some(occurrence) = project_occurrence_at(source, position) else {
+        return Ok(vec![]);
+    };
+    let index = build_project_index(&path, source, overlays)?;
+    let Some(target) = resolved_occurrence(&index, &path, &occurrence) else {
+        return Ok(vec![]);
+    };
+    Ok(project_locations_for_target(
+        &index,
+        &target,
+        include_declaration,
+    ))
+}
+
+pub fn rename_project_symbol_at(
+    path: &Path,
+    source: &str,
+    position: TextPosition,
+    new_name: &str,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<ProjectRenamePlan, String> {
+    if !valid_rename_ident(new_name) || new_name.contains('/') {
+        return Err(format!(
+            "{new_name:?} is not a safe exported Glyph identifier"
+        ));
+    }
+    let path = path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?;
+    let occurrence = project_occurrence_at(source, position)
+        .ok_or_else(|| "position is not a renameable project symbol".to_string())?;
+    let index = build_project_index(&path, source, overlays)?;
+    let target = resolved_occurrence(&index, &path, &occurrence)
+        .ok_or_else(|| format!("cannot resolve project symbol {:?}", occurrence.raw_name))?;
+    if target.name == new_name {
+        return Ok(ProjectRenamePlan {
+            symbol: target.name,
+            kind: target.kind,
+            edits: vec![],
+        });
+    }
+    let target_document = index
+        .get(&target.path)
+        .ok_or_else(|| "project symbol declaration document disappeared".to_string())?;
+    if target_document.occurrences.iter().any(|candidate| {
+        candidate.declaration && candidate.kind == target.kind && candidate.raw_name == new_name
+    }) {
+        return Err(format!(
+            "{} {:?} already exists in {}",
+            match target.kind {
+                ProjectSymbolKind::Component => "component",
+                ProjectSymbolKind::Style => "style",
+                ProjectSymbolKind::Paint => "paint",
+            },
+            new_name,
+            target.path.display()
+        ));
+    }
+
+    let mut edits = Vec::new();
+    for (document_path, document) in &index {
+        for candidate in &document.occurrences {
+            if resolved_occurrence(&index, document_path, candidate).as_ref() != Some(&target) {
+                continue;
+            }
+            let new_text = if candidate.declaration {
+                new_name.to_string()
+            } else if let Some((prefix, _)) = candidate.raw_name.rsplit_once('/') {
+                format!("{prefix}/{new_name}")
+            } else {
+                new_name.to_string()
+            };
+            edits.push(ProjectSourceTextEdit {
+                path: document_path.display().to_string(),
+                range: candidate.range,
+                new_text,
+            });
+        }
+    }
+    edits.sort_by(|a, b| {
+        (&a.path, a.range.start.line, a.range.start.character).cmp(&(
+            &b.path,
+            b.range.start.line,
+            b.range.start.character,
+        ))
+    });
+    Ok(ProjectRenamePlan {
+        symbol: target.name,
+        kind: target.kind,
+        edits,
+    })
 }
 
 fn any_node_declaration_on_line(source: &str, line: u32) -> Option<(String, usize)> {

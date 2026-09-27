@@ -7,14 +7,14 @@ use glyph::{
     apply_direct_resize_source, apply_transaction, build_display_list, component_catalog,
     create_source_group, create_source_instance,
     diff::diff_scenes,
-    direct_source_nodes, evaluate_assertions, load_project_scene, load_project_scene_with_source,
-    move_source_node, plan_direct_manipulation, plan_direct_resize, plan_direct_resize_from_handle,
-    query, remove_source_constraint, remove_source_group, remove_source_group_member,
-    remove_source_instance, render_svg, render_swiftui, render_web_canvas,
-    renderer_conformance_report, sample_motion, scene_in_state, set_source_constraint_offset,
-    set_source_constraint_relation, set_source_constraint_strength, set_source_instance_parameter,
-    set_source_instance_slot, set_source_property, solve_scene, target_strategy_report,
-    validate_project,
+    direct_source_nodes, evaluate_assertions, extract_source_component, load_project_scene,
+    load_project_scene_with_source, move_source_node, plan_direct_manipulation, plan_direct_resize,
+    plan_direct_resize_from_handle, query, remove_source_constraint, remove_source_group,
+    remove_source_group_member, remove_source_instance, render_svg, render_swiftui,
+    render_web_canvas, renderer_conformance_report, sample_motion, scene_in_state,
+    set_source_constraint_offset, set_source_constraint_relation, set_source_constraint_strength,
+    set_source_instance_parameter, set_source_instance_slot, set_source_property, solve_scene,
+    target_strategy_report, validate_project,
     vision::{VisionImportMode, default_vision_helper, import_image_to_glyph_with_mode},
     write_project_bundle,
 };
@@ -186,6 +186,16 @@ enum Command {
     },
     Components {
         input: PathBuf,
+    },
+    ComponentExtract {
+        input: PathBuf,
+        component: String,
+        instance: String,
+        members: Vec<String>,
+        #[arg(long)]
+        id: Option<String>,
+        #[arg(short, long)]
+        output: PathBuf,
     },
     InstanceAdd {
         input: PathBuf,
@@ -501,10 +511,10 @@ fn main() -> Result<()> {
             "constraints":["==",">=","<=","required","strong","medium","weak"],
             "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
             "runtime":["assertions","named-states","sampled-motion","motion-delay-repeat-alternate","deterministic-spring-presets","deterministic-text-layout"],
-            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","source-hierarchy-query","source-node-reorder","component-catalog","source-instance-create-remove","source-instance-binding-edit","language-diagnostics","context-completion","language-definition","language-references","language-hover","semantic-tokens","safe-node-rename","project-symbol-index","cross-file-component-style-paint-refactor","language-code-actions","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle","semantic-swiftui-codegen","semantic-web-canvas-codegen"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","source-hierarchy-query","source-node-reorder","component-catalog","source-component-extraction","source-instance-create-remove","source-instance-binding-edit","language-diagnostics","context-completion","language-definition","language-references","language-hover","semantic-tokens","safe-node-rename","project-symbol-index","cross-file-component-style-paint-refactor","language-code-actions","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle","semantic-swiftui-codegen","semantic-web-canvas-codegen"],
             "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","language-diagnostics-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","project-bundle-directory","project-bundle-manifest-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json","swiftui-source","web-canvas-module"],
             "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source","project assets content-addressed by SHA-256","project bundles preserve transitive source paths and verify before publish"],
-            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation/grouping, direct source/render-order reordering, project-aware component catalog plus source-authoritative instance add/remove/parameter/slot editing, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove + structural grouping + direct layer-owner source/render-order edits + component-instance create/remove/parameter/slot edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, document-local node navigation/rename, canonical hover + semantic tokens, project-aware component/style/paint definition/references/cross-file rename and imported-symbol hover, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project navigation/refactors follow transitive import namespaces and overlay open unsaved buffers; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw; SwiftUI and Web Canvas emitters are implemented for a documented bounded display-list subset and fail closed on unsupported semantics","visualDiff":"stable-ID resolved visual diff v1"}
+            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation/grouping, direct source/render-order reordering, project-aware component catalog plus source-authoritative local component extraction and instance add/remove/parameter/slot editing, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove + structural grouping + direct layer-owner source/render-order edits + fail-closed local component extraction + component-instance create/remove/parameter/slot edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, document-local node navigation/rename, canonical hover + semantic tokens, project-aware component/style/paint definition/references/cross-file rename and imported-symbol hover, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project navigation/refactors follow transitive import namespaces and overlay open unsaved buffers; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw; SwiftUI and Web Canvas emitters are implemented for a documented bounded display-list subset and fail closed on unsupported semantics","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
             let mut scene = load_project_scene(&input)?;
@@ -819,6 +829,42 @@ fn main() -> Result<()> {
             require_glyph_source(&input, "components")?;
             let scene = load_project_scene(&input)?;
             print_json(&component_catalog(&scene))
+        }
+        Command::ComponentExtract {
+            input,
+            component,
+            instance,
+            members,
+            id,
+            output,
+        } => {
+            require_glyph_source(&input, "component-extract")?;
+            let source = fs::read_to_string(&input)?;
+            let (edited, resolved_id) =
+                extract_source_component(&source, &component, &instance, id.as_deref(), &members)?;
+            let scene = validate_candidate_source(&input, &edited)?;
+            let extracted = scene
+                .nodes
+                .iter()
+                .filter(|node| {
+                    node.component_origin
+                        .as_ref()
+                        .is_some_and(|origin| origin.instance_id == resolved_id)
+                })
+                .map(|node| node.id.clone())
+                .collect::<Vec<_>>();
+            if extracted.len() != members.len() {
+                anyhow::bail!(
+                    "candidate extracted component produced {} nodes, expected {}",
+                    extracted.len(),
+                    members.len()
+                );
+            }
+            fs::write(&output, edited)?;
+            print_json(&serde_json::json!({
+                "ok":true,"input":input,"output":output,"component":component,
+                "instance":resolved_id,"name":instance,"nodes":extracted
+            }))
         }
         Command::InstanceAdd {
             input,

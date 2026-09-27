@@ -4080,6 +4080,149 @@ fn component_catalog_and_instance_source_ops_round_trip() {
 }
 
 #[test]
+fn component_extraction_preserves_visual_geometry_and_layer_order() {
+    let src = r##"scene "Extract" {
+  canvas 500 300;
+  rect background { x 0px; y 0px; width 500px; height 300px; fill "#ffffff"; }
+  rect badge { x 40px; y 50px; width 120px; height 48px; fill "#334455"; }
+  text label { content "Hello"; x 56px; y 82px; size 18px; fill "#ffffff"; }
+  ellipse tail { cx 240px; cy 80px; rx 24px; ry 24px; fill "#778899"; }
+}"##;
+    let mut before = parse_scene(src, "extract-before.glyph").unwrap();
+    solve_scene(&mut before);
+    let before_display = glyph::build_display_list(&before);
+
+    let (edited, instance_id) = glyph::extract_source_component(
+        src,
+        "badge_component",
+        "badge_instance",
+        Some("badge-instance"),
+        &["badge".into(), "label".into()],
+    )
+    .unwrap();
+    assert_eq!(instance_id, "badge-instance");
+    assert!(edited.contains("  component badge_component {"), "{edited}");
+    assert!(edited.contains("    rect badge"), "{edited}");
+    assert!(edited.contains("    text label"), "{edited}");
+    assert!(
+        edited.contains("  instance badge_component badge_instance @id(\"badge-instance\") { }"),
+        "{edited}"
+    );
+
+    let mut after = parse_scene(&edited, "extract-after.glyph").unwrap();
+    solve_scene(&mut after);
+    let after_display = glyph::build_display_list(&after);
+    let before_bounds = before_display
+        .items
+        .iter()
+        .map(|item| item.bounds)
+        .collect::<Vec<_>>();
+    let after_bounds = after_display
+        .items
+        .iter()
+        .map(|item| item.bounds)
+        .collect::<Vec<_>>();
+    assert_eq!(before_bounds, after_bounds);
+    assert_eq!(after_display.items[0].id, "background");
+    assert_eq!(after_display.items[1].id, "badge-instance/badge");
+    assert_eq!(after_display.items[2].id, "badge-instance/label");
+    assert_eq!(after_display.items[3].id, "tail");
+    assert_eq!(
+        glyph::component_catalog(&after)
+            .iter()
+            .find(|entry| entry.name == "badge_component")
+            .unwrap()
+            .node_count,
+        2
+    );
+}
+
+#[test]
+fn component_extraction_fails_closed_when_layer_order_or_references_are_ambiguous() {
+    let noncontiguous = r##"scene "Noncontiguous" {
+  canvas 300 200;
+  rect a { x 10px; y 10px; width 20px; height 20px; }
+  rect middle { x 40px; y 10px; width 20px; height 20px; }
+  rect b { x 70px; y 10px; width 20px; height 20px; }
+}"##;
+    let error = glyph::extract_source_component(
+        noncontiguous,
+        "pair",
+        "pair1",
+        None,
+        &["a".into(), "b".into()],
+    )
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("contiguous rendered layers"),
+        "{error}"
+    );
+
+    let constrained = r##"scene "Referenced" {
+  canvas 300 200;
+  rect a { x 10px; y 10px; width 20px; height 20px; }
+  rect b { x 40px; y 10px; width 20px; height 20px; }
+  constrain a.left == 10px @required;
+}"##;
+    let error = glyph::extract_source_component(
+        constrained,
+        "pair",
+        "pair1",
+        None,
+        &["a".into(), "b".into()],
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("authored reference"), "{error}");
+}
+
+#[test]
+fn component_extraction_rejects_cross_node_properties_groups_and_existing_instances() {
+    let linked = r##"scene "Linked" {
+  canvas 300 200;
+  path mask_shape { d "M0 0 L20 0 L20 20 Z"; }
+  rect clipped { x 10px; y 10px; width 40px; height 40px; clip mask_shape; }
+}"##;
+    let error = glyph::extract_source_component(
+        linked,
+        "clip_component",
+        "clip1",
+        None,
+        &["clipped".into()],
+    )
+    .unwrap_err();
+    assert!(
+        error.to_string().contains("cross-node property reference"),
+        "{error}"
+    );
+
+    let group = r##"scene "Group" {
+  canvas 300 200;
+  rect a { x 10px; y 10px; width 20px; height 20px; }
+  rect b { x 40px; y 10px; width 20px; height 20px; }
+  group pair { member a; member b; }
+}"##;
+    let error =
+        glyph::extract_source_component(group, "pair_component", "pair1", None, &["pair".into()])
+            .unwrap_err();
+    assert!(error.to_string().contains("leaf nodes"), "{error}");
+
+    let instance = r##"scene "Instance" {
+  canvas 300 200;
+  component dot { ellipse shape { cx 0px; cy 0px; rx 10px; ry 10px; } }
+  instance dot d1 { x 20px; y 20px; }
+}"##;
+    let error =
+        glyph::extract_source_component(instance, "nested", "nested1", None, &["d1".into()])
+            .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("does not nest existing instances"),
+        "{error}"
+    );
+}
+
+#[test]
 fn imported_component_instance_edits_validate_project_contracts() {
     use std::fs;
     let dir = tempfile::tempdir().unwrap();

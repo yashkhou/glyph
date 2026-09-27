@@ -1,17 +1,19 @@
 use crate::{
+    language_service::authored_node_reference_count,
     model::{
         ConstraintRhs, PropertyRef, Relation, Strength, Unit, Value, validate_value_for_property,
     },
     parser::{
-        direct_authored_constraint_source_span, direct_authored_instance_source_span,
-        direct_authored_instance_span_records, direct_authored_node_identity,
-        direct_authored_node_records, direct_authored_node_source_span,
-        direct_authored_node_span_records, direct_authored_scene_source_span, parse_import_specs,
-        parse_scene, validate_source_syntax,
+        direct_authored_component_span_records, direct_authored_constraint_source_span,
+        direct_authored_instance_source_span, direct_authored_instance_span_records,
+        direct_authored_node_identity, direct_authored_node_records,
+        direct_authored_node_source_span, direct_authored_node_span_records,
+        direct_authored_scene_source_span, parse_import_specs, parse_scene, validate_source_syntax,
     },
 };
 use anyhow::{Result, anyhow};
 use serde::Serialize;
+use std::collections::BTreeSet;
 
 fn skip_string(bytes: &[u8], mut i: usize) -> usize {
     i += 1;
@@ -673,6 +675,249 @@ fn valid_source_ident(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'/'))
+}
+
+fn authored_property_target(block: &str, property: &str) -> Option<String> {
+    let bytes = block.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            i = skip_string(bytes, i);
+            continue;
+        }
+        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
+            i = skip_line_comment(bytes, i + 2);
+            continue;
+        }
+        if !token_at(block, i, property) {
+            i += 1;
+            continue;
+        }
+        let mut cursor = i + property.len();
+        while cursor < bytes.len() && bytes[cursor].is_ascii_whitespace() {
+            cursor += 1;
+        }
+        if cursor >= bytes.len() {
+            return None;
+        }
+        if bytes[cursor] == b'"' {
+            let end = skip_string(bytes, cursor);
+            if end <= cursor + 1 || end > bytes.len() {
+                return None;
+            }
+            return Some(block[cursor + 1..end - 1].replace("\\\"", "\""));
+        }
+        let start = cursor;
+        while cursor < bytes.len() && !bytes[cursor].is_ascii_whitespace() && bytes[cursor] != b';'
+        {
+            cursor += 1;
+        }
+        return (cursor > start).then(|| block[start..cursor].to_string());
+    }
+    None
+}
+
+fn reindent_block(block: &str, indent: &str) -> String {
+    let first = block.lines().next().unwrap_or("");
+    let source_indent = first
+        .chars()
+        .take_while(|ch| ch.is_whitespace())
+        .collect::<String>();
+    block
+        .trim_end_matches(['\n', '\r'])
+        .lines()
+        .map(|line| {
+            let local = line.strip_prefix(&source_indent).unwrap_or(line);
+            format!("{indent}{local}")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+pub fn extract_source_component(
+    source: &str,
+    component_name: &str,
+    instance_name: &str,
+    stable_id: Option<&str>,
+    members: &[String],
+) -> Result<(String, String)> {
+    if !valid_source_ident(component_name) || component_name.contains('/') {
+        return Err(anyhow!(
+            "component name {component_name:?} must be a safe local Glyph identifier"
+        ));
+    }
+    if !valid_source_ident(instance_name) || instance_name.contains('/') {
+        return Err(anyhow!(
+            "instance name {instance_name:?} must be a safe top-level Glyph identifier"
+        ));
+    }
+    if direct_authored_component_span_records(source)?
+        .iter()
+        .any(|(name, _, _, _)| name == component_name)
+    {
+        return Err(anyhow!("component {component_name:?} already exists"));
+    }
+    if members.is_empty() {
+        return Err(anyhow!(
+            "component extraction requires at least one authored node"
+        ));
+    }
+
+    let mut selected = Vec::new();
+    let mut selected_ids = BTreeSet::new();
+    for requested in members {
+        let owner = resolve_layer_owner(source, requested)?;
+        if owner.is_instance {
+            return Err(anyhow!(
+                "component extraction does not nest existing instances; {requested} is an instance owner"
+            ));
+        }
+        if owner.kind == "group" {
+            return Err(anyhow!(
+                "component extraction v1 accepts directly-authored leaf nodes; extract group members explicitly"
+            ));
+        }
+        if !selected_ids.insert(owner.id.clone()) {
+            return Err(anyhow!("node {requested} was selected more than once"));
+        }
+        selected.push(owner);
+    }
+    selected.sort_by_key(|owner| owner.span_start);
+
+    let stable_id = stable_id.unwrap_or(instance_name);
+    if stable_id.is_empty() || stable_id.contains('/') {
+        return Err(anyhow!(
+            "instance id {stable_id:?} must be non-empty and must not contain '/'"
+        ));
+    }
+    for owner in direct_layer_owners(source)? {
+        if selected_ids.contains(&owner.id) {
+            continue;
+        }
+        if owner.id == stable_id
+            || owner.name == instance_name
+            || owner.id == instance_name
+            || owner.name == stable_id
+        {
+            return Err(anyhow!(
+                "extracted instance {instance_name:?} / id {stable_id:?} collides with existing layer owner {}",
+                owner.id
+            ));
+        }
+    }
+
+    let render_owners = direct_layer_owners(source)?
+        .into_iter()
+        .filter(|owner| owner.is_instance || owner.kind != "group")
+        .collect::<Vec<_>>();
+    let positions = selected
+        .iter()
+        .map(|selected_owner| {
+            render_owners
+                .iter()
+                .position(|owner| owner.id == selected_owner.id && !owner.is_instance)
+                .ok_or_else(|| {
+                    anyhow!(
+                        "selected node {} disappeared from layer order",
+                        selected_owner.id
+                    )
+                })
+        })
+        .collect::<Result<Vec<_>>>()?;
+    if positions
+        .windows(2)
+        .any(|pair| pair[1] != pair[0].saturating_add(1))
+    {
+        return Err(anyhow!(
+            "component extraction requires contiguous rendered layers so paint order remains exact"
+        ));
+    }
+
+    let selected_symbols = selected
+        .iter()
+        .flat_map(|owner| [owner.id.clone(), owner.name.clone()])
+        .collect::<BTreeSet<_>>();
+    for owner in &selected {
+        let references = authored_node_reference_count(source, &owner.name)
+            + if owner.id == owner.name {
+                0
+            } else {
+                authored_node_reference_count(source, &owner.id)
+            };
+        if references > 0 {
+            return Err(anyhow!(
+                "node {} has {references} authored reference(s); component extraction refuses to change its source namespace implicitly",
+                owner.id
+            ));
+        }
+        let (start, end) = layer_owner_span(source, owner)?;
+        let block = &source[start..end];
+        if ["clip", "mask", "a11y_labelled_by"]
+            .iter()
+            .any(|property| authored_property_target(block, property).is_some())
+        {
+            return Err(anyhow!(
+                "node {} has an authored cross-node property reference; component extraction requires explicit reference ownership",
+                owner.id
+            ));
+        }
+    }
+    for owner in direct_layer_owners(source)? {
+        if owner.is_instance || selected_ids.contains(&owner.id) {
+            continue;
+        }
+        let (start, end) = layer_owner_span(source, &owner)?;
+        let block = &source[start..end];
+        for property in ["clip", "mask", "a11y_labelled_by"] {
+            if let Some(target) = authored_property_target(block, property)
+                && selected_symbols.contains(&target)
+            {
+                return Err(anyhow!(
+                    "node {} references selected node {target} through {property}; extraction would change that namespace",
+                    owner.id
+                ));
+            }
+        }
+    }
+
+    let first_owner = selected
+        .first()
+        .ok_or_else(|| anyhow!("component extraction lost its selection"))?;
+    let first_start = layer_owner_span(source, first_owner)?.0;
+    let line_start = source[..first_owner.span_start]
+        .rfind('\n')
+        .map(|index| index + 1)
+        .unwrap_or(0);
+    let outer_indent = source[line_start..first_owner.span_start].to_string();
+    let child_indent = format!("{outer_indent}  ");
+    let mut component = format!("{outer_indent}component {component_name} {{\n");
+    for owner in &selected {
+        let (start, end) = layer_owner_span(source, owner)?;
+        component.push_str(&reindent_block(&source[start..end], &child_indent));
+        component.push('\n');
+    }
+    component.push_str(&format!("{outer_indent}}}\n"));
+    let id_attr = if stable_id == instance_name {
+        String::new()
+    } else {
+        format!(" @id(\"{}\")", stable_id.replace('"', "\\\""))
+    };
+    component.push_str(&format!(
+        "{outer_indent}instance {component_name} {instance_name}{id_attr} {{ }}\n"
+    ));
+
+    let mut out = source.to_string();
+    let mut spans = selected
+        .iter()
+        .map(|owner| layer_owner_span(source, owner))
+        .collect::<Result<Vec<_>>>()?;
+    spans.sort_by_key(|(start, _)| std::cmp::Reverse(*start));
+    for (start, end) in spans {
+        out.replace_range(start..end, "");
+    }
+    out.insert_str(first_start, &component);
+    validate_structural_group_source(&out)?;
+    Ok((out, stable_id.to_string()))
 }
 
 pub fn create_source_instance(

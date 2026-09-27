@@ -23,6 +23,9 @@ struct ContentView: View {
     @State private var newConstraintRelation = "eq"
     @State private var newConstraintStrength = "required"
     @State private var showComponentLibrary = false
+    @State private var showComponentExtraction = false
+    @State private var extractedComponentName = ""
+    @State private var extractedInstanceName = ""
     @State private var componentSelection = ""
     @State private var instanceName = ""
     @State private var instanceX = ""
@@ -62,6 +65,10 @@ struct ContentView: View {
             componentLibrarySheet
                 .frame(minWidth: 520, idealWidth: 600, minHeight: 520, idealHeight: 620)
         }
+        .sheet(isPresented: $showComponentExtraction) {
+            componentExtractionSheet
+                .frame(minWidth: 430, idealWidth: 470, minHeight: 250, idealHeight: 280)
+        }
     }
 
     private var commandBar: some View {
@@ -86,6 +93,13 @@ struct ContentView: View {
                 .help("Group the selected authored objects (⌘-click in the object ledger to multi-select)")
             Button("Ungroup") { model.ungroupSelected() }
                 .disabled(!model.canUngroupSelection)
+            Button("Make Component…") {
+                if extractedComponentName.isEmpty { extractedComponentName = "component" }
+                if extractedInstanceName.isEmpty { extractedInstanceName = "component1" }
+                showComponentExtraction = true
+            }
+            .disabled(!model.canExtractComponentSelection)
+            .help("Extract the selected contiguous authored layers into a reusable local component")
             Button("Components…") {
                 if componentSelection.isEmpty { componentSelection = model.components.first?.name ?? "" }
                 showComponentLibrary = true
@@ -541,6 +555,51 @@ struct ContentView: View {
             }
         }
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.55))
+    }
+
+    private var componentExtractionSheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("MAKE COMPONENT")
+                        .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    Text("Moves the selected contiguous authored layers into a reusable local component without changing visual geometry.")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+            }
+            Divider()
+            TextField("component name", text: $extractedComponentName)
+                .textFieldStyle(.roundedBorder)
+            TextField("instance name", text: $extractedInstanceName)
+                .textFieldStyle(.roundedBorder)
+            Text("\(model.selectedIDs.count) selected layer\(model.selectedIDs.count == 1 ? "" : "s") · references or non-contiguous paint order fail closed")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.secondary)
+            HStack {
+                Spacer()
+                Button("Cancel") { showComponentExtraction = false }
+                Button("Extract through Glyph source") {
+                    let component = extractedComponentName.trimmingCharacters(in: .whitespaces)
+                    let instance = extractedInstanceName.trimmingCharacters(in: .whitespaces)
+                    model.extractSelectionAsComponent(component: component, instance: instance)
+                    if model.error == nil {
+                        showComponentExtraction = false
+                        extractedComponentName = ""
+                        extractedInstanceName = ""
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(
+                    extractedComponentName.trimmingCharacters(in: .whitespaces).isEmpty
+                        || extractedInstanceName.trimmingCharacters(in: .whitespaces).isEmpty
+                        || !model.canExtractComponentSelection
+                )
+            }
+        }
+        .padding(16)
     }
 
     private var componentLibrarySelection: ComponentCatalogEntry? {

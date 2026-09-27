@@ -70,10 +70,11 @@ pub use solver::{SolveReport, solve_scene};
 pub use source_edit::{
     ComponentBindingSummary, ComponentCatalogEntry, DirectSourceNode, NodePlacement,
     add_source_constraint, add_source_group_member, component_catalog, create_source_group,
-    create_source_instance, direct_source_nodes, move_source_node, remove_source_constraint,
-    remove_source_group, remove_source_group_member, remove_source_instance,
-    set_source_constraint_offset, set_source_constraint_relation, set_source_constraint_strength,
-    set_source_instance_parameter, set_source_instance_slot, set_source_property,
+    create_source_instance, direct_source_nodes, extract_source_component, move_source_node,
+    remove_source_constraint, remove_source_group, remove_source_group_member,
+    remove_source_instance, set_source_constraint_offset, set_source_constraint_relation,
+    set_source_constraint_strength, set_source_instance_parameter, set_source_instance_slot,
+    set_source_property,
 };
 pub use targets::{
     TargetAssessment, TargetAvailability, TargetClass, TargetStrategyReport, target_strategy_report,

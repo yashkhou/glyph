@@ -73,6 +73,23 @@ grep -q 'param px 25px;' "$TMP_VERIFY/component-moved.glyph"
 "$BIN" source-resize "$TMP_VERIFY/component-moved.glyph" card1/bg 20 0 --output "$TMP_VERIFY/component-resized.glyph"
 grep -q 'param w 130px;' "$TMP_VERIFY/component-resized.glyph"
 "$BIN" check "$TMP_VERIFY/component-resized.glyph"
+cat > "$TMP_VERIFY/component-extract.glyph" <<'EOF'
+scene "Component Extract Verify" {
+  canvas 420 240;
+  rect back @id("back") { x 10; y 10; width 100; height 80; }
+  rect card @id("card") { x 120; y 30; width 100; height 60; }
+  text label @id("label") { content "Card"; x 132; y 64; size 18px; }
+  rect front @id("front") { x 240; y 20; width 100; height 80; }
+}
+EOF
+"$BIN" component-extract "$TMP_VERIFY/component-extract.glyph" card_component card1 card label --output "$TMP_VERIFY/component-extracted.glyph" > "$TMP_VERIFY/component-extract.json"
+grep -q '"instance": "card1"' "$TMP_VERIFY/component-extract.json"
+grep -q '^  component card_component {' "$TMP_VERIFY/component-extracted.glyph"
+grep -q '^    rect card' "$TMP_VERIFY/component-extracted.glyph"
+grep -q '^  instance card_component card1 { }' "$TMP_VERIFY/component-extracted.glyph"
+"$BIN" check "$TMP_VERIFY/component-extracted.glyph"
+"$BIN" components "$TMP_VERIFY/component-extracted.glyph" > "$TMP_VERIFY/component-extracted-catalog.json"
+grep -q '"name": "card_component"' "$TMP_VERIFY/component-extracted-catalog.json"
 cat > "$TMP_VERIFY/hierarchy.glyph" <<'EOF'
 scene "Hierarchy Verify" {
   canvas 420 240;

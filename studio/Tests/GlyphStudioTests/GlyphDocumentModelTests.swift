@@ -385,6 +385,53 @@ extension GlyphDocumentModelTests {
 
 extension GlyphDocumentModelTests {
     @MainActor
+    func testStudioComponentExtractionPreservesVisualsAndUndo() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-component-extract-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("component-extract.glyph")
+        let source = #"""
+        scene "Studio Component Extract" {
+          canvas 420 260;
+          rect background @id("background") { x 0px; y 0px; width 420px; height 260px; fill "#ffffff"; }
+          rect badge @id("badge") { x 40px; y 50px; width 120px; height 48px; fill "#334455"; }
+          text label @id("label") { content "Hello"; x 56px; y 82px; size 18px; fill "#ffffff"; }
+          ellipse tail @id("tail") { cx 240px; cy 80px; rx 24px; ry 24px; fill "#778899"; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        let beforeBounds = model.displayList?.items.map(\.bounds)
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["background", "badge", "label", "tail"])
+
+        model.select("badge")
+        model.select("label", extending: true)
+        XCTAssertTrue(model.canExtractComponentSelection)
+        model.extractSelectionAsComponent(component: "badge_component", instance: "badge1")
+
+        let extracted = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(extracted.contains("component badge_component {"), extracted)
+        XCTAssertTrue(extracted.contains("instance badge_component badge1 { }"), extracted)
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["background", "badge1/badge", "badge1/label", "tail"])
+        XCTAssertEqual(model.displayList?.items.map(\.bounds), beforeBounds)
+        XCTAssertEqual(model.components.first(where: { $0.name == "badge_component" })?.nodeCount, 2)
+        XCTAssertTrue(model.selectedID?.hasPrefix("badge1/") == true)
+        XCTAssertTrue(model.canUndo)
+
+        model.undoSemanticEdit()
+        let undone = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertFalse(undone.contains("component badge_component {"), undone)
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["background", "badge", "label", "tail"])
+        XCTAssertEqual(model.displayList?.items.map(\.bounds), beforeBounds)
+    }
+}
+
+extension GlyphDocumentModelTests {
+    @MainActor
     func testStudioMultiSelectGroupingAndUngroupRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("glyph-studio-grouping-tests-\(UUID().uuidString)")

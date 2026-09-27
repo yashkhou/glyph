@@ -851,6 +851,14 @@ fn symbol_reference_indexes(tokens: &[LexToken], symbol: &str) -> Vec<(usize, bo
         .collect()
 }
 
+pub(crate) fn authored_node_reference_count(source: &str, symbol: &str) -> usize {
+    let tokens = lex_tokens(source);
+    symbol_reference_indexes(&tokens, symbol)
+        .into_iter()
+        .filter(|(_, declaration)| !*declaration)
+        .count()
+}
+
 pub(crate) fn node_symbol_at_position(
     source: &str,
     position: TextPosition,

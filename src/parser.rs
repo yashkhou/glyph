@@ -1340,6 +1340,33 @@ pub(crate) fn direct_authored_node_records(
         .collect())
 }
 
+pub(crate) fn direct_authored_component_span_records(
+    input: &str,
+) -> Result<Vec<(String, usize, usize, usize)>> {
+    let mut parsed = GlyphParser::parse(Rule::file, input).context("Glyph parse failed")?;
+    let file = parsed.next().context("missing file")?;
+    let scene_pair = file
+        .into_inner()
+        .find(|item| item.as_rule() == Rule::scene)
+        .context("missing scene")?;
+    let mut records = Vec::new();
+    for item in scene_pair.into_inner() {
+        if item.as_rule() != Rule::component_def {
+            continue;
+        }
+        let span = item.as_span();
+        let line = line_of(&item);
+        let name = item
+            .into_inner()
+            .next()
+            .context("missing component name")?
+            .as_str()
+            .to_string();
+        records.push((name, line, span.start(), span.end()));
+    }
+    Ok(records)
+}
+
 pub fn direct_authored_node_identity(
     input: &str,
     node_id: &str,

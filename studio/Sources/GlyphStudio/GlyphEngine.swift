@@ -43,6 +43,15 @@ final class GlyphDocumentModel: ObservableObject {
 
     var canGroupSelection: Bool { selectedIDs.count >= 2 && !isDirty }
 
+    var canExtractComponentSelection: Bool {
+        guard !isDirty, !selectedIDs.isEmpty else { return false }
+        return selectedIDs.allSatisfy { id in
+            sourceHierarchy.contains { node in
+                node.id == id && node.kind != "group" && !node.kind.hasPrefix("instance:")
+            }
+        }
+    }
+
     var canUngroupSelection: Bool {
         !isDirty && selectedIDs.count == 1 && selectedItem?.primitive.kind == "group"
     }
@@ -352,6 +361,20 @@ final class GlyphDocumentModel: ObservableObject {
         mutateComponentSource(statusLabel: "Updated \(instance).\(slot)", selectionAfter: keepSelection) {
             input, output in
             ["instance-slot-set", input.path, instance, slot, value, "--output", output.path]
+        }
+    }
+
+    func extractSelectionAsComponent(component: String, instance: String) {
+        guard canExtractComponentSelection, !component.isEmpty, !instance.isEmpty else { return }
+        let ordered = displayList?.items
+            .filter { selectedIDs.contains($0.id) }
+            .map(\.id) ?? Array(selectedIDs).sorted()
+        guard !ordered.isEmpty else { return }
+        mutateComponentSource(
+            statusLabel: "Extracted \(ordered.count) objects into \(component)",
+            selectionAfter: instance
+        ) { input, output in
+            ["component-extract", input.path, component, instance] + ordered + ["--output", output.path]
         }
     }
 

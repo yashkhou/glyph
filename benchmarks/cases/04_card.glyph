@@ -1,0 +1,10 @@
+scene "Card" @id("bench_card") {
+ canvas 760 520 background "#EEEDE8";
+ rect card @id("card") { role "surface" "card"; x 90; y 70; width 580; height 380; rx 38; fill "#FFFDF8"; }
+ ellipse avatar @id("avatar") { role "avatar" "identity"; cx 180; cy 170; rx 48; ry 48; fill "#D39A7D"; }
+ text title @id("card_title") { role "heading" "card"; content "Morning walk"; x 260; y 162; size 36; font "SF Pro"; weight "700"; fill "#23312F"; }
+ text meta @id("card_meta") { role "metadata" "card"; content "4,812 steps"; x 260; y 208; size 24; font "SF Pro"; weight "400"; fill "#6C7773"; }
+ rect progress @id("progress_track") { role "progress" "track"; x 150; y 320; width 460; height 28; rx 14; fill "#DCE3DE"; }
+ rect fill @id("progress_fill") { role "progress" "value"; x 150; y 320; width 322; height 28; rx 14; fill "#4F806E"; }
+ constrain card.center_x == canvas.center_x @required;
+}

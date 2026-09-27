@@ -1,0 +1,10 @@
+scene "Mascot" @id("bench_mascot") {
+ canvas 520 620 background "#F5F1E8";
+ ellipse body @id("mascot_body") { role "mascot" "body" "focal"; cx 260; cy 330; rx 140; ry 170; fill "#819D70"; }
+ ellipse eye_l @id("eye_left") { role "mascot" "eye"; cx 215; cy 300; rx 18; ry 24; fill "#243128"; }
+ ellipse eye_r @id("eye_right") { role "mascot" "eye"; cx 305; cy 300; rx 18; ry 24; fill "#243128"; }
+ path smile @id("smile") { role "mascot" "expression"; d "M210 365 C240 400 280 400 310 365 C282 382 238 382 210 365 Z"; fill "#3D5849"; }
+ ellipse foot_l @id("foot_left") { role "mascot" "foot"; cx 190; cy 490; rx 54; ry 28; fill "#6E8B61"; }
+ ellipse foot_r @id("foot_right") { role "mascot" "foot"; cx 330; cy 490; rx 54; ry 28; fill "#6E8B61"; }
+ constrain mascot_body.center_x == canvas.center_x @required;
+}

@@ -1,0 +1,11 @@
+scene "Diagram" @id("bench_diagram") {
+ canvas 1000 520 background "#FAFAF7";
+ rect a @id("node_a") { role "diagram-node" "source"; x 100; y 190; width 220; height 120; rx 26; fill "#D8E8E1"; }
+ rect b @id("node_b") { role "diagram-node" "process"; x 390; y 190; width 220; height 120; rx 26; fill "#E8DFC7"; }
+ rect c @id("node_c") { role "diagram-node" "output"; x 680; y 190; width 220; height 120; rx 26; fill "#D8DFEE"; }
+ path ab @id("edge_ab") { role "connector"; d "M320 250 L390 250"; fill "none"; stroke "#68736F"; stroke_width 8; stroke_linecap "round"; }
+ path bc @id("edge_bc") { role "connector"; d "M610 250 L680 250"; fill "none"; stroke "#68736F"; stroke_width 8; stroke_linecap "round"; }
+ text ta @id("label_a") { role "label"; content "Intent"; x 210; y 258; size 30; font "SF Pro"; weight "600"; align "center"; fill "#24322E"; }
+ text tb @id("label_b") { role "label"; content "GSIR"; x 500; y 258; size 30; font "SF Pro"; weight "600"; align "center"; fill "#433C2B"; }
+ text tc @id("label_c") { role "label"; content "Render"; x 790; y 258; size 30; font "SF Pro"; weight "600"; align "center"; fill "#2C3345"; }
+}

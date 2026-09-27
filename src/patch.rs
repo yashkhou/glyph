@@ -67,6 +67,7 @@ pub fn apply_transaction(
                     .find(|n| n.id == *node || n.name == *node)
                     .ok_or_else(|| anyhow!("unknown node {node}"))?;
                 let key = path.strip_prefix("props.").unwrap_or(path);
+                validate_value_for_property(key, value).map_err(|message| anyhow!(message))?;
                 target.authored.props.insert(key.to_string(), value.clone());
             }
             PatchOperation::AddRole { node, role } => {

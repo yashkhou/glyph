@@ -1,0 +1,7 @@
+scene "Poster" @id("bench_poster") {
+ canvas 900 1200 background "#F1EADF";
+ path sun @id("poster_sun") { role "poster" "focal" "sun"; d "M450 210 C560 210 650 300 650 410 C650 520 560 610 450 610 C340 610 250 520 250 410 C250 300 340 210 450 210 Z"; fill "#D9794A"; }
+ path hill @id("poster_hill") { role "poster" "landform"; d "M0 820 C180 650 360 760 520 650 C650 560 760 610 900 500 L900 1200 L0 1200 Z"; fill "#3C6556"; }
+ text headline @id("poster_headline") { role "poster" "heading"; content "MAKE SPACE"; x 450; y 1050; size 72; font "Avenir Next"; weight "800"; align "center"; fill "#21302B"; }
+ constrain poster_headline.center_x == canvas.center_x @required;
+}

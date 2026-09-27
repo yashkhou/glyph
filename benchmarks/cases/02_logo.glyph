@@ -1,0 +1,7 @@
+scene "Logo" @id("bench_logo") {
+ canvas 720 260 background "#FCFBF7";
+ ellipse mark @id("logo_mark") { role "logo" "symbol"; cx 122; cy 130; rx 66; ry 66; fill "#1F3A37"; }
+ path cut @id("logo_cut") { role "logo" "accent"; d "M88 130 C88 90 116 70 154 70 C132 86 124 106 124 130 C124 154 134 174 154 190 C116 190 88 170 88 130 Z"; fill "#FCFBF7"; }
+ text word @id("logo_word") { role "logo" "wordmark"; content "GLYPH"; x 230; y 151; size 68; font "Avenir Next"; weight "700"; fill "#1F3A37"; }
+ constrain mark.center_y == canvas.center_y @required;
+}

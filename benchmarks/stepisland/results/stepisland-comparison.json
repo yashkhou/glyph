@@ -1,0 +1,149 @@
+{
+  "scene": "StepIsland / Sakura Lake",
+  "representations": {
+    "glyph": {
+      "bytes": 2003,
+      "lines": 89,
+      "numeric_literals": 85
+    },
+    "svg": {
+      "bytes": 1941,
+      "lines": 12,
+      "numeric_literals": 121
+    },
+    "swiftui": {
+      "bytes": 3016,
+      "lines": 54,
+      "numeric_literals": 99
+    },
+    "commander_draw": {
+      "bytes": 3353,
+      "lines": 153,
+      "numeric_literals": 125
+    }
+  },
+  "semantic": {
+    "glyph": {
+      "stable_ids": 10,
+      "role_declarations": 9,
+      "relationship_declarations": 6,
+      "machine_role_query": true
+    },
+    "svg": {
+      "stable_ids": 9,
+      "role_attributes": 9,
+      "relationship_declarations": 0,
+      "machine_role_query": "DOM/XML query required; constraints absent"
+    },
+    "swiftui": {
+      "stable_ids": 8,
+      "role_declarations": 0,
+      "relationship_variable_references": 9,
+      "machine_role_query": false
+    },
+    "commander_draw": {
+      "stable_ids": 9,
+      "role_declarations": 0,
+      "relationship_declarations": 0,
+      "machine_role_query": false
+    }
+  },
+  "surgical_edit": {
+    "glyph": {
+      "exit": 0,
+      "changed_line_sides": 2,
+      "changed_locations": 1,
+      "diff": [
+        "--- ",
+        "+++ ",
+        "@@ -58,7 +58,7 @@",
+        "     cx 1090;",
+        "     cy 2110;",
+        "     rx 150;",
+        "-    ry 265;",
+        "+    ry 300;",
+        "     fill \"#F3C1C9\";",
+        "   }",
+        " "
+      ]
+    },
+    "svg": {
+      "changed_line_sides": 2,
+      "changed_locations": 1,
+      "diff": [
+        "--- ",
+        "+++ ",
+        "@@ -6,7 +6,7 @@",
+        " <rect id=\"bridge\" data-glyph-role=\"bridge architecture focal-support\" x=\"430\" y=\"1562\" width=\"430\" height=\"56\" rx=\"28\" fill=\"#C58C68\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        " <ellipse id=\"mascot\" data-glyph-role=\"mascot primary-focal\" cx=\"645\" cy=\"1390\" rx=\"92\" ry=\"108\" fill=\"#3E5558\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        " <ellipse id=\"tree_left\" data-glyph-role=\"tree foreground framing\" cx=\"195\" cy=\"2080\" rx=\"185\" ry=\"310\" fill=\"#EAA6B2\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        "-<ellipse id=\"tree_right\" data-glyph-role=\"tree foreground framing\" cx=\"1090\" cy=\"2110\" rx=\"150\" ry=\"265\" fill=\"#F3C1C9\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        "+<ellipse id=\"tree_right\" data-glyph-role=\"tree foreground framing\" cx=\"1090\" cy=\"2110\" rx=\"150\" ry=\"300\" fill=\"#F3C1C9\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        " <path id=\"foreground\" data-glyph-role=\"vegetation foreground\" d=\"M0 2200 C220 2100 370 2290 560 2180 C760 2070 910 2250 1080 2150 C1180 2090 1240 2110 1290 2080 L1290 2796 L0 2796 Z\" fill=\"#688E70\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"/>",
+        " <text id=\"title\" data-glyph-role=\"heading primary-text\" x=\"645\" y=\"220\" font-size=\"58\" font-family=\"New York\" font-weight=\"600\" text-anchor=\"middle\" fill=\"#293538\" opacity=\"1\" fill-opacity=\"1\" stroke-opacity=\"1\"><tspan x=\"645\" dy=\"0\">Give the next few months a shape.</tspan></text>",
+        " </svg>"
+      ]
+    },
+    "swiftui": {
+      "changed_line_sides": 2,
+      "changed_locations": 1,
+      "diff": [
+        "--- ",
+        "+++ ",
+        "@@ -33,7 +33,7 @@",
+        "                 .frame(width: 370, height: 620).position(x: 195, y: 2080).accessibilityIdentifier(\"tree_left\")",
+        " ",
+        "             Ellipse().fill(Color(red: 0.953, green: 0.757, blue: 0.788))",
+        "-                .frame(width: 300, height: 530).position(x: 1090, y: 2110).accessibilityIdentifier(\"tree_right\")",
+        "+                .frame(width: 300, height: 600).position(x: 1090, y: 2110).accessibilityIdentifier(\"tree_right\")",
+        " ",
+        "             Path { p in",
+        "                 p.move(to: CGPoint(x: 0, y: 2200))"
+      ]
+    },
+    "commander_draw": {
+      "changed_fields": 1,
+      "target_id": "tree_right"
+    }
+  },
+  "resize_intent": {
+    "glyph": {
+      "compile_exit": 0,
+      "apply_exit": 0,
+      "operations": 1,
+      "title_center": 800.0,
+      "mascot_center": 800.0,
+      "expected_center": 800,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0
+    },
+    "swiftui": {
+      "source_fields_to_change": 1,
+      "dependent_center_fields_to_edit": 0,
+      "mechanism": "width property feeds centerX = width / 2; title and mascot use centerX"
+    },
+    "svg": {
+      "source_fields_to_change": 4,
+      "dependent_center_fields_to_edit": 2,
+      "mechanism": "root width + viewBox width + title x + mascot cx; constraints were lowered away"
+    },
+    "commander_draw": {
+      "source_fields_to_change": 3,
+      "dependent_center_fields_to_edit": 2,
+      "mechanism": "document width + title x + mascot cx; interchange geometry has no constraint graph"
+    }
+  },
+  "determinism": {
+    "glyph": {
+      "runs": 5,
+      "gsir_unique_hashes": 1,
+      "svg_unique_hashes": 1
+    }
+  },
+  "notes": [
+    "SwiftUI comparison intentionally uses centerX/lakeX/lakeY relationships rather than a coordinate-only implementation.",
+    "Raw SVG is Glyph's semantic SVG output, so it retains stable IDs and role metadata; it demonstrates what is lost when constraints are lowered away.",
+    "CommanderDraw comparison retains stable IDs but its interchange document has no Glyph constraint graph or role taxonomy.",
+    "Numeric literal counts are descriptive complexity signals, not quality scores."
+  ]
+}

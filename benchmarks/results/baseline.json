@@ -1,0 +1,1064 @@
+{
+  "cases": [
+    {
+      "case": "01_icon",
+      "check": {
+        "code": 0,
+        "ms": 6.407,
+        "stdout": "{\n  \"constraints\": 2,\n  \"nodes\": 2,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_icon\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.489
+      },
+      "nodes": 2,
+      "roles": [
+        "background",
+        "focal",
+        "icon",
+        "symbol"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.654,
+        "sha256": "637d19c05eec3f1df3428ad2a3afcc6fcb218c16ced26eefb5928fa49d4cce29"
+      },
+      "png": {
+        "code": 0,
+        "ms": 1599.344,
+        "sha256": "4a15cbdd6d9c14be5ae6fd8222fd41b703028b4e6376760bac8f2123fffd0888",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "02_logo",
+      "check": {
+        "code": 0,
+        "ms": 3.124,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 3,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_logo\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.429
+      },
+      "nodes": 3,
+      "roles": [
+        "accent",
+        "logo",
+        "symbol",
+        "wordmark"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.285,
+        "sha256": "c3cf74191b2c6a891e0bf39948d857053bb99d4bbdf1abdd1e41ae980353b956"
+      },
+      "png": {
+        "code": 0,
+        "ms": 447.052,
+        "sha256": "76b5ed359675b58c8d4762a3795593f34aad7a6258a7cebccfae4221faf1b711",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "03_button",
+      "check": {
+        "code": 0,
+        "ms": 3.333,
+        "stdout": "{\n  \"constraints\": 2,\n  \"nodes\": 2,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_button\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.773
+      },
+      "nodes": 2,
+      "roles": [
+        "button",
+        "control",
+        "label",
+        "primary"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.632,
+        "sha256": "9fe4567e7c777d002968d3888dcbeb3a2e8a4dfb80d919c001cd673bd9f059a0"
+      },
+      "png": {
+        "code": 0,
+        "ms": 249.986,
+        "sha256": "d8955bab7ca15072ab4b6c52781dab66400446446652ead77bacc32067a3c3c4",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "04_card",
+      "check": {
+        "code": 0,
+        "ms": 3.692,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 6,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_card\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.798
+      },
+      "nodes": 6,
+      "roles": [
+        "avatar",
+        "card",
+        "heading",
+        "identity",
+        "metadata",
+        "progress",
+        "surface",
+        "track",
+        "value"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.579,
+        "sha256": "428d704b611e2f815addf209d4568c982ca127ef4f292c1fba28457c73ae578d"
+      },
+      "png": {
+        "code": 0,
+        "ms": 332.673,
+        "sha256": "b313db6929d85dbc44ce28c5e92a52fb952b95b40f06b8a1a182eea648ca00be",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "05_nav",
+      "check": {
+        "code": 0,
+        "ms": 3.611,
+        "stdout": "{\n  \"constraints\": 4,\n  \"nodes\": 4,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_nav\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\",\n      \"constraint.3\",\n      \"constraint.4\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.69
+      },
+      "nodes": 4,
+      "roles": [
+        "item",
+        "navigation",
+        "selected",
+        "surface"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.64,
+        "sha256": "2030f68a32428e435a934f702b44a60d72979f1d2283d3cef61a07210f9492e3"
+      },
+      "png": {
+        "code": 0,
+        "ms": 184.984,
+        "sha256": "cc3d9f0ba84709e404aa2bc7f1c1c72e6d1e33993ac56b131f7eabdb7b4e3c5e",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "06_diagram",
+      "check": {
+        "code": 0,
+        "ms": 6.866,
+        "stdout": "{\n  \"constraints\": 0,\n  \"nodes\": 8,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_diagram\",\n  \"solve\": {\n    \"applied\": [],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.585
+      },
+      "nodes": 8,
+      "roles": [
+        "connector",
+        "diagram-node",
+        "label",
+        "output",
+        "process",
+        "source"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.444,
+        "sha256": "21dfcb0feb0d26ca4ebe803e8ad8ebd0fe8bab8d8e5d12262afc6764fb37c8f0"
+      },
+      "png": {
+        "code": 0,
+        "ms": 264.242,
+        "sha256": "c267f45451ece210e6da84bb63ce530cd85da1b82d23f95489f7ffcd8f0f1a89",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "07_chart",
+      "check": {
+        "code": 0,
+        "ms": 3.331,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 6,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_chart\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.44
+      },
+      "nodes": 6,
+      "roles": [
+        "bar",
+        "chart",
+        "data",
+        "heading",
+        "plot"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.437,
+        "sha256": "e81f0d5bc2fc0fb55e3ce783a02205e32743c481e4f2bd30c2ed6ce5d19fca0b"
+      },
+      "png": {
+        "code": 0,
+        "ms": 236.045,
+        "sha256": "3f4b958e8d9fdce8026acc6524a7da168e3e933d60bdc9ec3796bf422f469b5a",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "08_badge",
+      "check": {
+        "code": 0,
+        "ms": 2.997,
+        "stdout": "{\n  \"constraints\": 4,\n  \"nodes\": 3,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_badge\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\",\n      \"constraint.3\",\n      \"constraint.4\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.563
+      },
+      "nodes": 3,
+      "roles": [
+        "badge",
+        "focal",
+        "inner",
+        "outer",
+        "symbol"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.384,
+        "sha256": "27a2f4c39cea30f4ff7d1ef4bbc24864ae09ba78ec873fabf5c3cb9cc21a0b23"
+      },
+      "png": {
+        "code": 0,
+        "ms": 176.295,
+        "sha256": "0cf891254f9ab6e80e2d6e72139a74251d58fda7d5069a694a79b87c708a427f",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "09_mascot",
+      "check": {
+        "code": 0,
+        "ms": 3.019,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 6,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_mascot\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.452
+      },
+      "nodes": 6,
+      "roles": [
+        "body",
+        "expression",
+        "eye",
+        "focal",
+        "foot",
+        "mascot"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.474,
+        "sha256": "4981d6d7409106721483a41e5c174e9bc4018f06f54eb7a2e0733f72a8613682"
+      },
+      "png": {
+        "code": 0,
+        "ms": 180.99,
+        "sha256": "dcb285a08ece408082cd59891c7b48c9fd39bf9ba23463e26e7ac4df6fc1c6ec",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "10_pattern",
+      "check": {
+        "code": 0,
+        "ms": 3.044,
+        "stdout": "{\n  \"constraints\": 0,\n  \"nodes\": 11,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_pattern\",\n  \"solve\": {\n    \"applied\": [],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.755
+      },
+      "nodes": 11,
+      "roles": [
+        "dot",
+        "pattern"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.513,
+        "sha256": "c3c6648d09173e1fc466f97545ab0e894609a3dab18f43705dbe0aee856cc064"
+      },
+      "png": {
+        "code": 0,
+        "ms": 181.06,
+        "sha256": "9b420d2a21e3d48b2c818fb425814a02cc2bb45c88bc732e8e7ec3ac94243044",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "11_poster",
+      "check": {
+        "code": 0,
+        "ms": 3.158,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 3,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_poster\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.645
+      },
+      "nodes": 3,
+      "roles": [
+        "focal",
+        "heading",
+        "landform",
+        "poster",
+        "sun"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.317,
+        "sha256": "70fb88e041e0953d9cd590821aea62aa67cff719882fa2dec9ec7ea72bb3456e"
+      },
+      "png": {
+        "code": 0,
+        "ms": 182.93,
+        "sha256": "a0550f10b2ebc0e713c1f8abac36abd62038085abf901db3700f5217006dee49",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "12_responsive",
+      "check": {
+        "code": 0,
+        "ms": 3.04,
+        "stdout": "{\n  \"constraints\": 5,\n  \"nodes\": 3,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_responsive\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\",\n      \"constraint.3\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.633
+      },
+      "nodes": 3,
+      "roles": [
+        "art",
+        "focal",
+        "heading",
+        "panel",
+        "responsive"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.33,
+        "sha256": "d062ae6b6b2fc37599e2648f3848f8089566fce88d8068ba22970da338c5d511"
+      },
+      "png": {
+        "code": 0,
+        "ms": 272.525,
+        "sha256": "50127ca6eb815894c0c95da82124762ce85c8fa2c40ca3a677711c0529859035",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "13_typography",
+      "check": {
+        "code": 0,
+        "ms": 3.081,
+        "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 4,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_typography\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.43
+      },
+      "nodes": 4,
+      "roles": [
+        "body",
+        "headline",
+        "kicker",
+        "rule",
+        "typography"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.579,
+        "sha256": "73de191485607bc43b66bfc7c650f4a8f229c7327c0c2793d65ba704b6c4cdf3"
+      },
+      "png": {
+        "code": 0,
+        "ms": 569.488,
+        "sha256": "672d2ee0bd66959b65d9b2613094f61f849e64e3a088f704798fa5c2727dbec5",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "14_landscape",
+      "check": {
+        "code": 0,
+        "ms": 3.258,
+        "stdout": "{\n  \"constraints\": 3,\n  \"nodes\": 7,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_landscape\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\",\n      \"constraint.3\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.659
+      },
+      "nodes": 7,
+      "roles": [
+        "architecture",
+        "background",
+        "bridge",
+        "foreground",
+        "heading",
+        "landscape",
+        "midground",
+        "mountain",
+        "tree",
+        "water"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.737,
+        "sha256": "77309a31ed79cefad66d7b6074fab7445f9a70450ebde13b12bcc2309b15ae6f"
+      },
+      "png": {
+        "code": 0,
+        "ms": 273.381,
+        "sha256": "f15defdc7669b3aeab9caba3dc554ddc40ca6dbd89279ad0204282f2e71ef95e",
+        "stderr": ""
+      }
+    },
+    {
+      "case": "15_ui_screen",
+      "check": {
+        "code": 0,
+        "ms": 3.278,
+        "stdout": "{\n  \"constraints\": 2,\n  \"nodes\": 9,\n  \"ok\": true,\n  \"revision\": 1,\n  \"scene\": \"bench_ui_screen\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\",\n      \"constraint.2\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": []\n  }\n}",
+        "stderr": ""
+      },
+      "compile": {
+        "code": 0,
+        "ms": 2.633
+      },
+      "nodes": 9,
+      "roles": [
+        "button",
+        "button-label",
+        "check",
+        "heading",
+        "ritual",
+        "row",
+        "ui"
+      ],
+      "ids_unique": true,
+      "svg": {
+        "code": 0,
+        "ms": 2.503,
+        "sha256": "51735bdb389cdb2d66b0ebe282448a9f5ec3aceadc0899661a39e60db93df331"
+      },
+      "png": {
+        "code": 0,
+        "ms": 233.554,
+        "sha256": "f98fed06b7c4fc35abfb7f5d4926d127154babbd0ab422c791387c3925c768ca",
+        "stderr": ""
+      }
+    }
+  ],
+  "determinism": {
+    "01_icon": {
+      "compile_unique_hashes": 1,
+      "svg_unique_hashes": 1,
+      "runs": 20
+    },
+    "12_responsive": {
+      "compile_unique_hashes": 1,
+      "svg_unique_hashes": 1,
+      "runs": 20
+    },
+    "14_landscape": {
+      "compile_unique_hashes": 1,
+      "svg_unique_hashes": 1,
+      "runs": 20
+    },
+    "png_icon": {
+      "unique_hashes": 1,
+      "runs": 5
+    }
+  },
+  "patches": [
+    {
+      "case": "01_icon",
+      "target": [
+        "icon_bg",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 3.047,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "02_logo",
+      "target": [
+        "logo_mark",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 2.486,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "03_button",
+      "target": [
+        "button",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.357,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "04_card",
+      "target": [
+        "card",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.526,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "05_nav",
+      "target": [
+        "nav_bar",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.51,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3",
+          "constraint.4"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "06_diagram",
+      "target": [
+        "node_a",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.511,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "07_chart",
+      "target": [
+        "plot",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.542,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "08_badge",
+      "target": [
+        "badge_outer",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 2.325,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3",
+          "constraint.4"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "09_mascot",
+      "target": [
+        "mascot_body",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 2.482,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "10_pattern",
+      "target": [
+        "dot_1",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 2.433,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "11_poster",
+      "target": [
+        "poster_headline",
+        "size"
+      ],
+      "code": 0,
+      "ms": 2.359,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "12_responsive",
+      "target": [
+        "hero_panel",
+        "height"
+      ],
+      "code": 0,
+      "ms": 2.41,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "13_typography",
+      "target": [
+        "kicker",
+        "size"
+      ],
+      "code": 0,
+      "ms": 2.446,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "14_landscape",
+      "target": [
+        "landscape_lake",
+        "cx"
+      ],
+      "code": 0,
+      "ms": 2.498,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    },
+    {
+      "case": "15_ui_screen",
+      "target": [
+        "screen_title",
+        "size"
+      ],
+      "code": 0,
+      "ms": 2.242,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 1,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      }
+    }
+  ],
+  "responsive": [
+    {
+      "case": "01_icon",
+      "code": 0,
+      "ms": 2.132,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "icon_bg"
+      ]
+    },
+    {
+      "case": "03_button",
+      "code": 0,
+      "ms": 2.481,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "button",
+        "button_label"
+      ]
+    },
+    {
+      "case": "05_nav",
+      "code": 0,
+      "ms": 2.468,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3",
+          "constraint.4"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "nav_bar"
+      ]
+    },
+    {
+      "case": "08_badge",
+      "code": 0,
+      "ms": 2.419,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3",
+          "constraint.4"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "badge_outer",
+        "badge_inner"
+      ]
+    },
+    {
+      "case": "12_responsive",
+      "code": 0,
+      "ms": 2.41,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "hero_panel"
+      ]
+    },
+    {
+      "case": "14_landscape",
+      "code": 0,
+      "ms": 2.203,
+      "from_revision": 1,
+      "to_revision": 2,
+      "changed_authored_fields": 0,
+      "unrelated_authored_nodes_changed": 0,
+      "required_constraints_violated": 0,
+      "solve_report": {
+        "applied": [
+          "constraint.1",
+          "constraint.2",
+          "constraint.3"
+        ],
+        "relaxed": [],
+        "unresolved": [],
+        "required_conflicts": []
+      },
+      "derived_nodes_moved": [
+        "landscape_lake",
+        "landscape_bridge",
+        "landscape_title"
+      ]
+    }
+  ],
+  "failures": {
+    "malformed": {
+      "code": 0,
+      "stderr": ""
+    },
+    "stale_revision": {
+      "code": 1,
+      "stderr": "Error: revision conflict: expected 99, current 1"
+    },
+    "unknown_node": {
+      "code": 1,
+      "stderr": "Error: unknown node does_not_exist"
+    },
+    "required_conflict": {
+      "code": 0,
+      "stdout": "{\n  \"constraints\": 2,\n  \"nodes\": 1,\n  \"ok\": false,\n  \"revision\": 1,\n  \"scene\": \"conflict\",\n  \"solve\": {\n    \"applied\": [\n      \"constraint.1\"\n    ],\n    \"relaxed\": [],\n    \"required_conflicts\": [\n      \"constraint.2 conflicts with constraint.1 on a.center_x (200 vs 100)\"\n    ],\n    \"unresolved\": []\n  }\n}",
+      "stderr": ""
+    },
+    "missing_ref": {
+      "code": 0,
+      "stdout": "{\n  \"constraints\": 1,\n  \"nodes\": 1,\n  \"ok\": false,\n  \"revision\": 1,\n  \"scene\": \"missing\",\n  \"solve\": {\n    \"applied\": [],\n    \"relaxed\": [],\n    \"required_conflicts\": [],\n    \"unresolved\": [\n      \"constraint.1\"\n    ]\n  }\n}",
+      "stderr": ""
+    }
+  },
+  "performance": {
+    "100": {
+      "check_ms": [
+        3.327,
+        3.265,
+        3.39
+      ],
+      "compile_ms": 3.738,
+      "code": 0
+    },
+    "1000": {
+      "check_ms": [
+        57.515,
+        58.1,
+        57.9
+      ],
+      "compile_ms": 59.668,
+      "code": 0
+    },
+    "5000": {
+      "check_ms": [
+        1329.898,
+        1377.08,
+        1332.186
+      ],
+      "compile_ms": 1338.073,
+      "code": 0
+    }
+  }
+}

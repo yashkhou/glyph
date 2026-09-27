@@ -1,0 +1,11 @@
+scene "Responsive" @id("bench_responsive") {
+ canvas 1000 600 background "#F7F6F2";
+ rect hero @id("hero_panel") { role "responsive" "panel"; x 100; y 90; width 800; height 420; rx 42; fill "#DDE8E1"; }
+ ellipse art @id("hero_art") { role "responsive" "art" "focal"; cx 720; cy 300; rx 120; ry 120; fill "#789B87"; }
+ text title @id("hero_title") { role "responsive" "heading"; content "Design intent survives resize"; x 300; y 250; size 42; font "SF Pro"; weight "700"; max_width 410; line_height 52; align "center"; fill "#26342F"; }
+ constrain hero_panel.center_x == canvas.center_x @required;
+ constrain hero_title.center_y == hero_panel.center_y @strong;
+ constrain hero_art.center_y == hero_panel.center_y @strong;
+ constrain hero_art.right <= hero_panel.right - 60 @required;
+ constrain hero_title.center_x <= hero_art.left - 80 @strong;
+}

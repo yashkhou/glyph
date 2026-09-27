@@ -1,0 +1,10 @@
+scene "Badge" @id("bench_badge") {
+ canvas 420 420 background "#F8F4E9";
+ ellipse outer @id("badge_outer") { role "badge" "outer"; cx 210; cy 210; rx 148; ry 148; fill "#C28D44"; }
+ ellipse inner @id("badge_inner") { role "badge" "inner"; cx 210; cy 210; rx 116; ry 116; fill "#F8F4E9"; }
+ path star @id("badge_star") { role "badge" "symbol" "focal"; d "M210 110 L236 178 L310 182 L252 228 L270 300 L210 260 L150 300 L168 228 L110 182 L184 178 Z"; fill "#C28D44"; }
+ constrain badge_outer.center_x == canvas.center_x @required;
+ constrain badge_outer.center_y == canvas.center_y @required;
+ constrain badge_inner.center_x == badge_outer.center_x @required;
+ constrain badge_inner.center_y == badge_outer.center_y @required;
+}

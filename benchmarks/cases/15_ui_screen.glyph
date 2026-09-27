@@ -1,0 +1,14 @@
+scene "UI Screen" @id("bench_ui_screen") {
+ canvas 430 932 background "#F7F5EF";
+ text title @id("screen_title") { role "ui" "heading"; content "Today"; x 38; y 86; size 46; font "SF Pro"; weight "700"; fill "#1F2D29"; }
+ rect task1 @id("task_1") { role "ui" "row" "ritual"; x 28; y 150; width 374; height 120; rx 28; fill "#FFFFFF"; }
+ rect task2 @id("task_2") { role "ui" "row" "ritual"; x 28; y 290; width 374; height 120; rx 28; fill "#FFFFFF"; }
+ rect task3 @id("task_3") { role "ui" "row" "ritual"; x 28; y 430; width 374; height 120; rx 28; fill "#FFFFFF"; }
+ ellipse c1 @id("check_1") { role "ui" "check"; cx 70; cy 210; rx 18; ry 18; fill "#7FA08B"; }
+ ellipse c2 @id("check_2") { role "ui" "check"; cx 70; cy 350; rx 18; ry 18; fill "#CBD5CF"; }
+ ellipse c3 @id("check_3") { role "ui" "check"; cx 70; cy 490; rx 18; ry 18; fill "#CBD5CF"; }
+ rect cta @id("cta") { role "ui" "button"; x 28; y 790; width 374; height 84; rx 28; fill "#315F50"; }
+ text cta_label @id("cta_label") { role "ui" "button-label"; content "Check in"; x 215; y 843; size 28; font "SF Pro"; weight "700"; align "center"; fill "#FFFFFF"; }
+ constrain cta.center_x == canvas.center_x @required;
+ constrain cta_label.center_x == cta.center_x @required;
+}

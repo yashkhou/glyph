@@ -1,8 +1,15 @@
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand};
 use glyph::{
-    PatchOperation, Scene, apply_transaction, diff::diff_scenes, parse_scene, query, render_svg,
-    solve_scene,
+    ConstraintRhs, PatchOperation, PropertyRef, Relation, Scene, Strength, Unit, Value,
+    add_source_constraint, apply_direct_manipulation_source, apply_direct_resize_source,
+    apply_transaction, build_display_list,
+    diff::diff_scenes,
+    evaluate_assertions, load_project_scene, plan_direct_manipulation, plan_direct_resize, query,
+    remove_source_constraint, render_svg, renderer_conformance_report, sample_motion,
+    scene_in_state, set_source_constraint_offset, set_source_constraint_relation,
+    set_source_constraint_strength, set_source_property, solve_scene, target_strategy_report,
+    vision::{default_vision_helper, import_image_to_glyph},
 };
 use serde::Deserialize;
 use std::{
@@ -49,6 +56,22 @@ enum Command {
         #[arg(long, default_value = "/Users/joshuakhoury/Projects/CommanderDraw")]
         commander_draw: PathBuf,
     },
+    ExportPdf {
+        input: PathBuf,
+        #[arg(short, long)]
+        output: PathBuf,
+        #[arg(long, default_value = "/Users/joshuakhoury/Projects/CommanderDraw")]
+        commander_draw: PathBuf,
+    },
+    ImportImage {
+        input: PathBuf,
+        #[arg(short, long)]
+        output: PathBuf,
+        #[arg(long)]
+        vision_helper: Option<PathBuf>,
+        #[arg(long)]
+        manifest_output: Option<PathBuf>,
+    },
     Inspect {
         input: PathBuf,
         #[arg(long)]
@@ -76,7 +99,119 @@ enum Command {
         #[arg(short, long)]
         output: PathBuf,
     },
+    Test {
+        input: PathBuf,
+    },
+    State {
+        input: PathBuf,
+        name: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    MotionSample {
+        input: PathBuf,
+        time: f64,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    SourceSet {
+        input: PathBuf,
+        node: String,
+        property: String,
+        value: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    Constraints {
+        input: PathBuf,
+        #[arg(long)]
+        node: Option<String>,
+    },
+    ConstraintEdit {
+        input: PathBuf,
+        source_order: usize,
+        #[arg(long)]
+        relation: Option<String>,
+        #[arg(long)]
+        strength: Option<String>,
+        #[arg(long, allow_hyphen_values = true)]
+        offset: Option<String>,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    ConstraintRemove {
+        input: PathBuf,
+        source_order: usize,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    ConstraintAdd {
+        input: PathBuf,
+        lhs: String,
+        relation: String,
+        rhs: String,
+        #[arg(long, allow_hyphen_values = true)]
+        offset: Option<String>,
+        #[arg(long, default_value = "required")]
+        strength: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    DragPlan {
+        input: PathBuf,
+        node: String,
+        #[arg(allow_hyphen_values = true)]
+        dx: f64,
+        #[arg(allow_hyphen_values = true)]
+        dy: f64,
+    },
+    SourceDrag {
+        input: PathBuf,
+        node: String,
+        #[arg(allow_hyphen_values = true)]
+        dx: f64,
+        #[arg(allow_hyphen_values = true)]
+        dy: f64,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    ResizePlan {
+        input: PathBuf,
+        node: String,
+        #[arg(allow_hyphen_values = true)]
+        dw: f64,
+        #[arg(allow_hyphen_values = true)]
+        dh: f64,
+    },
+    SourceResize {
+        input: PathBuf,
+        node: String,
+        #[arg(allow_hyphen_values = true)]
+        dw: f64,
+        #[arg(allow_hyphen_values = true)]
+        dh: f64,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    DisplayList {
+        input: PathBuf,
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+    ObjectMap {
+        input: PathBuf,
+    },
+    Conformance {
+        input: PathBuf,
+    },
+    Targets {
+        input: PathBuf,
+    },
     Diff {
+        before: PathBuf,
+        after: PathBuf,
+    },
+    VisualDiff {
         before: PathBuf,
         after: PathBuf,
     },
@@ -89,14 +224,21 @@ struct PatchBundle {
 }
 
 fn parse_file(path: &Path) -> Result<Scene> {
-    let source = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
-    let mut scene = parse_scene(&source, &path.display().to_string())?;
-    let _ = solve_scene(&mut scene);
+    let mut scene = load_project_scene(path)?;
+    let report = solve_scene(&mut scene);
+    if !report.required_conflicts.is_empty() || !report.unresolved.is_empty() {
+        anyhow::bail!(
+            "Glyph solve failed: {} required conflict(s), {} unresolved constraint(s)",
+            report.required_conflicts.len(),
+            report.unresolved.len()
+        );
+    }
     Ok(scene)
 }
 
 fn load_gsir(path: &Path) -> Result<Scene> {
-    Ok(serde_json::from_str(&fs::read_to_string(path)?)?)
+    let source = fs::read_to_string(path).with_context(|| format!("read {}", path.display()))?;
+    Ok(glyph::load_gsir_str(&source)?.0)
 }
 
 fn load_scene(path: &Path) -> Result<Scene> {
@@ -112,26 +254,102 @@ fn print_json(value: &impl serde::Serialize) -> Result<()> {
     Ok(())
 }
 
+fn parse_property_ref_arg(raw: &str) -> Result<PropertyRef> {
+    let (node, property) = raw
+        .split_once('.')
+        .ok_or_else(|| anyhow!("property reference must be node.property, got {raw:?}"))?;
+    if node.is_empty() || property.is_empty() {
+        return Err(anyhow!(
+            "property reference must be node.property, got {raw:?}"
+        ));
+    }
+    Ok(PropertyRef {
+        node: node.to_string(),
+        property: property.to_string(),
+    })
+}
+
+fn parse_relation_arg(raw: &str) -> Result<Relation> {
+    match raw {
+        "eq" | "==" => Ok(Relation::Eq),
+        "ge" | ">=" => Ok(Relation::Ge),
+        "le" | "<=" => Ok(Relation::Le),
+        _ => Err(anyhow!(
+            "relation must be eq, ge, le, ==, >=, or <=; got {raw:?}"
+        )),
+    }
+}
+
+fn parse_strength_arg(raw: &str) -> Result<Strength> {
+    match raw.trim_start_matches('@') {
+        "required" => Ok(Strength::Required),
+        "strong" => Ok(Strength::Strong),
+        "medium" => Ok(Strength::Medium),
+        "weak" => Ok(Strength::Weak),
+        _ => Err(anyhow!(
+            "strength must be required, strong, medium, or weak; got {raw:?}"
+        )),
+    }
+}
+
+fn parse_constraint_rhs_arg(raw: &str) -> Result<ConstraintRhs> {
+    if raw.contains('.') {
+        return Ok(ConstraintRhs::Property(parse_property_ref_arg(raw)?));
+    }
+    match glyph::parse_value_literal(raw)? {
+        Value::Number(value) => Ok(ConstraintRhs::Number(value)),
+        Value::Quantity(quantity) => Ok(ConstraintRhs::Quantity(quantity)),
+        Value::Text(_) => Err(anyhow!(
+            "constraint rhs must be node.property, a number, or a typed quantity; got {raw:?}"
+        )),
+    }
+}
+
+fn parse_constraint_offset_arg(raw: &str) -> Result<(f64, Option<Unit>)> {
+    match glyph::parse_value_literal(raw)? {
+        Value::Number(value) => Ok((value, None)),
+        Value::Quantity(quantity) => Ok((quantity.canonical_value(), Some(quantity.unit))),
+        Value::Text(_) => Err(anyhow!(
+            "constraint offset must be a number or typed quantity; got {raw:?}"
+        )),
+    }
+}
+
+fn require_glyph_source(path: &Path, operation: &str) -> Result<()> {
+    if path.extension().and_then(|value| value.to_str()) != Some("glyph") {
+        return Err(anyhow!("{operation} requires a .glyph source input"));
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Capabilities => print_json(&serde_json::json!({
             "name":"Glyph Core", "version":env!("CARGO_PKG_VERSION"),
             "canonical":"GSIR", "sourceExtension":".glyph",
-            "nodeKinds":["rect","ellipse","path","text","group"],
+            "versions":{"source":glyph::CURRENT_SOURCE_VERSION,"gsirSchema":glyph::CURRENT_GSIR_SCHEMA_VERSION},
+            "units":["px","deg","rad","%","s","ms"],
+            "nodeKinds":["rect","ellipse","path","text","image","group"],
             "constraints":["==",">=","<=","required","strong","medium","weak"],
-            "agent":["query-by-role","inspect","why","revision-safe-apply","semantic-diff"],
-            "outputs":["gsir-json","svg","png-via-CommanderDraw","commander-draw-json"],
-            "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG"],
-            "status":{"vision":"postponed","motion":"postponed","studio":"postponed","solver":"MVP deterministic resolver; Cassowary-class solver planned"}
+            "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
+            "runtime":["assertions","named-states","sampled-motion","deterministic-text-layout"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","display-list","object-map","renderer-conformance","target-strategy","bounded-image-import"],
+            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","renderer-conformance-json","target-strategy-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
+            "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source"],
+            "status":{"vision":"bounded Apple Vision OCR + rectangle importer v1; not arbitrary photo reconstruction","motion":"declarative sampled motion v1","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; compatible equality offsets co-edit through candidate validation, inequalities remain feasibility guards, component inverse edits require unambiguous typed bindings, and bottom-right semantic resize supports rect/image/ellipse plus unrotated authored paths through affine scale/translation without rewriting path geometry; unsafe intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
-            let source = fs::read_to_string(&input)?;
-            let mut scene = parse_scene(&source, &input.display().to_string())?;
+            let mut scene = load_project_scene(&input)?;
             let report = solve_scene(&mut scene);
+            let ok = report.required_conflicts.is_empty() && report.unresolved.is_empty();
             print_json(
-                &serde_json::json!({"ok":report.required_conflicts.is_empty() && report.unresolved.is_empty(),"scene":scene.id,"revision":scene.revision,"nodes":scene.nodes.len(),"constraints":scene.constraints.len(),"solve":report}),
-            )
+                &serde_json::json!({"ok":ok,"scene":scene.id,"revision":scene.revision,"nodes":scene.nodes.len(),"constraints":scene.constraints.len(),"solve":report}),
+            )?;
+            if !ok {
+                anyhow::bail!("Glyph check failed: unresolved or conflicting required constraints");
+            }
+            Ok(())
         }
         Command::Compile { input, output } => {
             let scene = parse_file(&input)?;
@@ -164,6 +382,28 @@ fn main() -> Result<()> {
             print_json(
                 &serde_json::json!({"ok":true,"output":output,"format":"png","backend":"CommanderDraw","scene":scene.id,"revision":scene.revision}),
             )
+        }
+        Command::ExportPdf {
+            input,
+            output,
+            commander_draw,
+        } => {
+            let scene = load_scene(&input)?;
+            glyph::bridge::export_pdf_with_commander_draw(&scene, &output, &commander_draw)?;
+            print_json(
+                &serde_json::json!({"ok":true,"output":output,"format":"pdf","backend":"CommanderDraw","scene":scene.id,"revision":scene.revision}),
+            )
+        }
+        Command::ImportImage {
+            input,
+            output,
+            vision_helper,
+            manifest_output,
+        } => {
+            let helper = vision_helper.unwrap_or_else(default_vision_helper);
+            let summary =
+                import_image_to_glyph(&input, &output, &helper, manifest_output.as_deref())?;
+            print_json(&summary)
         }
         Command::Inspect { input, node } => {
             let scene = load_scene(&input)?;
@@ -221,10 +461,244 @@ fn main() -> Result<()> {
             fs::write(&output, serde_json::to_string_pretty(&scene)? + "\n")?;
             print_json(&result)
         }
+        Command::Test { input } => {
+            let scene = load_scene(&input)?;
+            let results = evaluate_assertions(&scene);
+            let passed = results.iter().all(|r| r.passed);
+            print_json(&serde_json::json!({
+                "ok": passed,
+                "scene": scene.id,
+                "assertions": results,
+                "count": scene.assertions.len()
+            }))?;
+            if !passed {
+                anyhow::bail!("Glyph assertions failed");
+            }
+            Ok(())
+        }
+        Command::State {
+            input,
+            name,
+            output,
+        } => {
+            let scene = load_scene(&input)?;
+            let sampled = scene_in_state(&scene, &name)?;
+            fs::write(&output, serde_json::to_string_pretty(&sampled)? + "\n")?;
+            print_json(
+                &serde_json::json!({"ok":true,"scene":sampled.id,"state":name,"output":output}),
+            )
+        }
+        Command::MotionSample {
+            input,
+            time,
+            output,
+        } => {
+            let scene = load_scene(&input)?;
+            let sampled = sample_motion(&scene, time)?;
+            fs::write(&output, serde_json::to_string_pretty(&sampled)? + "\n")?;
+            print_json(
+                &serde_json::json!({"ok":true,"scene":sampled.id,"time":time,"output":output,"animations":sampled.animations.len()}),
+            )
+        }
+        Command::SourceSet {
+            input,
+            node,
+            property,
+            value,
+            output,
+        } => {
+            let source = fs::read_to_string(&input)?;
+            let parsed_value = glyph::parse_value_literal(&value)?;
+            let edited = set_source_property(&source, &node, &property, parsed_value)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"node":node,"property":property}),
+            )
+        }
+        Command::Constraints { input, node } => {
+            let scene = load_scene(&input)?;
+            if let Some(node) = node {
+                let constraints = scene
+                    .constraints
+                    .iter()
+                    .filter(|constraint| {
+                        constraint.lhs.node == node
+                            || matches!(&constraint.rhs, ConstraintRhs::Property(reference) if reference.node == node)
+                    })
+                    .collect::<Vec<_>>();
+                print_json(&constraints)
+            } else {
+                print_json(&scene.constraints)
+            }
+        }
+        Command::ConstraintEdit {
+            input,
+            source_order,
+            relation,
+            strength,
+            offset,
+            output,
+        } => {
+            require_glyph_source(&input, "constraint-edit")?;
+            if relation.is_none() && strength.is_none() && offset.is_none() {
+                return Err(anyhow!(
+                    "constraint-edit requires --relation, --strength, or --offset"
+                ));
+            }
+            let mut edited = fs::read_to_string(&input)?;
+            if let Some(relation) = relation {
+                edited = set_source_constraint_relation(
+                    &edited,
+                    source_order,
+                    parse_relation_arg(&relation)?,
+                )?;
+            }
+            if let Some(strength) = strength {
+                edited = set_source_constraint_strength(
+                    &edited,
+                    source_order,
+                    parse_strength_arg(&strength)?,
+                )?;
+            }
+            if let Some(offset) = offset {
+                let (value, unit) = parse_constraint_offset_arg(&offset)?;
+                edited = set_source_constraint_offset(&edited, source_order, value, unit)?;
+            }
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"constraint":format!("constraint.{source_order}")}),
+            )
+        }
+        Command::ConstraintRemove {
+            input,
+            source_order,
+            output,
+        } => {
+            require_glyph_source(&input, "constraint-remove")?;
+            let source = fs::read_to_string(&input)?;
+            let edited = remove_source_constraint(&source, source_order)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"removed":format!("constraint.{source_order}")}),
+            )
+        }
+        Command::ConstraintAdd {
+            input,
+            lhs,
+            relation,
+            rhs,
+            offset,
+            strength,
+            output,
+        } => {
+            require_glyph_source(&input, "constraint-add")?;
+            let lhs = parse_property_ref_arg(&lhs)?;
+            let relation = parse_relation_arg(&relation)?;
+            let rhs = parse_constraint_rhs_arg(&rhs)?;
+            let (offset, offset_unit) = match offset {
+                Some(raw) => parse_constraint_offset_arg(&raw)?,
+                None => (0.0, None),
+            };
+            let strength = parse_strength_arg(&strength)?;
+            let source = fs::read_to_string(&input)?;
+            let edited = add_source_constraint(
+                &source,
+                &lhs,
+                relation,
+                &rhs,
+                offset,
+                offset_unit,
+                strength,
+            )?;
+            fs::write(&output, edited)?;
+            print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"added":true}))
+        }
+        Command::DragPlan {
+            input,
+            node,
+            dx,
+            dy,
+        } => {
+            let scene = load_scene(&input)?;
+            print_json(&plan_direct_manipulation(&scene, &node, dx, dy)?)
+        }
+        Command::SourceDrag {
+            input,
+            node,
+            dx,
+            dy,
+            output,
+        } => {
+            if input.extension().and_then(|x| x.to_str()) != Some("glyph") {
+                anyhow::bail!("source-drag requires a .glyph source input");
+            }
+            let scene = parse_file(&input)?;
+            let plan = plan_direct_manipulation(&scene, &node, dx, dy)?;
+            let source = fs::read_to_string(&input)?;
+            let edited = apply_direct_manipulation_source(&source, &plan)?;
+            fs::write(&output, edited)?;
+            print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"plan":plan}))
+        }
+        Command::ResizePlan {
+            input,
+            node,
+            dw,
+            dh,
+        } => {
+            let scene = load_scene(&input)?;
+            print_json(&plan_direct_resize(&scene, &node, dw, dh)?)
+        }
+        Command::SourceResize {
+            input,
+            node,
+            dw,
+            dh,
+            output,
+        } => {
+            if input.extension().and_then(|x| x.to_str()) != Some("glyph") {
+                anyhow::bail!("source-resize requires a .glyph source input");
+            }
+            let scene = parse_file(&input)?;
+            let plan = plan_direct_resize(&scene, &node, dw, dh)?;
+            let source = fs::read_to_string(&input)?;
+            let edited = apply_direct_resize_source(&source, &plan)?;
+            fs::write(&output, edited)?;
+            print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"plan":plan}))
+        }
+        Command::DisplayList { input, output } => {
+            let scene = load_scene(&input)?;
+            let display = build_display_list(&scene);
+            if let Some(path) = output {
+                fs::write(&path, serde_json::to_string_pretty(&display)? + "\n")?;
+                print_json(
+                    &serde_json::json!({"ok":true,"scene":scene.id,"output":path,"items":display.items.len(),"objects":display.object_map.len()}),
+                )
+            } else {
+                print_json(&display)
+            }
+        }
+        Command::ObjectMap { input } => {
+            let scene = load_scene(&input)?;
+            let display = build_display_list(&scene);
+            print_json(&display.object_map)
+        }
+        Command::Conformance { input } => {
+            let scene = load_scene(&input)?;
+            print_json(&renderer_conformance_report(&scene))
+        }
+        Command::Targets { input } => {
+            let scene = load_scene(&input)?;
+            print_json(&target_strategy_report(&scene))
+        }
         Command::Diff { before, after } => {
             let before = load_scene(&before)?;
             let after = load_scene(&after)?;
             print_json(&diff_scenes(&before, &after))
+        }
+        Command::VisualDiff { before, after } => {
+            let before = load_scene(&before)?;
+            let after = load_scene(&after)?;
+            print_json(&glyph::diff::visual_diff(&before, &after))
         }
     }
 }

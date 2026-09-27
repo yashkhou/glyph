@@ -4,7 +4,7 @@ Glyph is a programmable design format and agent-native semantic visual runtime. 
 
 ## Status
 
-`v0.1.0` is a working research prototype. The canonical representation is **GSIR (Glyph Scene IR)**. The current constraint engine is an intentionally small deterministic MVP resolver; a Cassowary-class incremental solver is a planned replacement behind the same IR/API.
+`v0.1.0` is a working research prototype. The canonical representation is **GSIR (Glyph Scene IR)**. The current resolver is Cassowary-class weighted linear solving with explicit required/soft constraint diagnostics; solves currently rebuild solver state per invocation rather than keeping a long-lived incremental editing session.
 
 ```text
 .glyph source
@@ -15,10 +15,11 @@ GSIR: stable IDs · semantic roles · authored state · provenance · constraint
     ↓
 constraint resolution
     ↓
-resolved geometry
+resolved geometry / backend-neutral display list
     ├── SVG
     ├── CommanderDraw .draw.json
-    └── CommanderDraw renderer → PNG
+    ├── CommanderDraw renderer → PNG
+    └── CommanderDraw export → PDF
 ```
 
 ## Why Glyph exists
@@ -73,15 +74,24 @@ glyph apply scene.gsir.json 1 '[{"op":"set","node":"tree_right","path":"props.ry
 glyph diff scene.gsir.json scene.v2.gsir.json
 glyph render scene.v2.gsir.json --output scene.svg
 glyph render-png scene.v2.gsir.json --output scene.png
+glyph export-pdf scene.v2.gsir.json --output scene.pdf
+glyph conformance scene.v2.gsir.json
+glyph targets scene.v2.gsir.json
+glyph drag-plan scene.glyph card 12 -7
+glyph source-drag scene.glyph card 12 -7 --output scene.moved.glyph
+glyph resize-plan scene.glyph card 24 -10
+glyph source-resize scene.glyph card 24 -10 --output scene.resized.glyph
+glyph constraints scene.glyph --node card
+glyph constraint-edit scene.glyph 2 --strength strong --offset 8px --output scene.constraint-edited.glyph
+glyph constraint-remove scene.glyph 3 --output scene.constraint-removed.glyph
+glyph constraint-add scene.glyph card.left ge 0 --strength required --output scene.constraint-added.glyph
 ```
 
 ## Commander integration
 
-Glyph is registered as the local `glyph-design` Commander plugin with 11 tools:
+Glyph is registered as the local `glyph-design` Commander plugin with 30 tools spanning scene inspection/querying, revision-safe edits, semantic/visual diffs, runtime states/motion, source round-trip edits, first-class authored constraint query/edit/remove/add operations, constraint-aware drag/resize planning, display-list/object-map inspection, renderer conformance, target strategy, bounded image import, and SVG/PNG/PDF/CommanderDraw export.
 
-`glyph_capabilities`, `glyph_check`, `glyph_compile`, `glyph_query`, `glyph_inspect`, `glyph_why`, `glyph_apply`, `glyph_diff`, `glyph_render_svg`, `glyph_render_png`, and `glyph_export_draw`.
-
-The plugin executes the release binary at `target/release/glyph`. PNG rendering deliberately reuses CommanderDraw rather than introducing another raster engine.
+The plugin executes the release binary at `target/release/glyph`. PNG and PDF deliberately reuse CommanderDraw rather than introducing another raster engine. Unsupported CommanderDraw semantics fail closed before those exports. Node resolves deterministically from `GLYPH_NODE_BIN` or `NODE_BINARY`, then process `PATH`, then standard Homebrew/system locations.
 
 ## What v0.1 proves
 
@@ -96,10 +106,15 @@ The plugin executes the release binary at `target/release/glyph`. PNG rendering 
 - semantic diffs operate by stable ID;
 - canvas resizing re-solves centered objects without rewriting authored values;
 - deterministic SVG preserves IDs/roles;
-- CommanderDraw compatibility provides PNG output now.
+- the same display list lowers to CommanderDraw, PNG and fail-closed PDF output;
+- renderer conformance and target reports distinguish exact/degraded/unsupported behavior instead of implying pixel equivalence;
+- direct manipulation v1 edits free authored coordinates, translates paths through affine `translate_x`/`translate_y` without rewriting `d`, co-edits compatible equality offsets, preserves inequalities as feasibility guards, and inverts unambiguous typed component bindings back into instance `param` edits; semantic rect/image/ellipse resize follows the same source-authoritative contract, while unrotated authored paths resize through affine scale/translation without rewriting `d`; Studio exposes bottom-right semantic resize handles for rect/image/ellipse/path, and unsafe or unsupported intent fails closed;
+- authored constraints are first-class source edit targets: relation, strength and offset can be changed surgically; constraints can be removed or added; semantic reparsing rejects dimensionally invalid edits; Studio surfaces constraint badges and inspector controls instead of forcing raw-text surgery;
+- Studio semantic undo/redo restores validated source snapshots rather than canvas-only state;
+- CoreText typography, bounded Vision import, sampled motion, and the native Studio are present as scoped v1 implementations.
 
 ## Deliberately postponed
 
-Image→Glyph / photo reconstruction, a full visual editor, motion, learned aesthetic constraints, a public package system, and a huge semantic ontology are not in v0.1. They come after the core representation and agent-edit benchmarks justify them.
+Full arbitrary-photo reconstruction, text-specific and multi-edge resize semantics, rotated/constrained/component-owned path resize inference, structural group membership/translation, semantic SwiftUI/Web Canvas code generation, learned aesthetic constraints as authority, a public package ecosystem, and a huge semantic ontology remain out of scope. They only advance when their semantic and round-trip contracts are explicit.
 
 See `docs/ARCHITECTURE.md` and `docs/MVP.md`.

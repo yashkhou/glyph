@@ -1,0 +1,10 @@
+scene "Chart" @id("bench_chart") {
+ canvas 860 560 background "#FBFAF6";
+ rect plot @id("plot") { role "chart" "plot"; x 90; y 80; width 680; height 380; rx 24; fill "#F0EFEA"; }
+ rect bar1 @id("bar_q1") { role "bar" "data"; x 160; y 330; width 90; height 100; rx 16; fill "#7CA996"; }
+ rect bar2 @id("bar_q2") { role "bar" "data"; x 315; y 270; width 90; height 160; rx 16; fill "#5F8F7B"; }
+ rect bar3 @id("bar_q3") { role "bar" "data"; x 470; y 210; width 90; height 220; rx 16; fill "#467563"; }
+ rect bar4 @id("bar_q4") { role "bar" "data"; x 625; y 145; width 90; height 285; rx 16; fill "#315F50"; }
+ text title @id("chart_title") { role "heading" "chart"; content "Quarterly growth"; x 430; y 55; size 34; font "SF Pro"; weight "700"; align "center"; fill "#26332E"; }
+ constrain chart_title.center_x == canvas.center_x @required;
+}

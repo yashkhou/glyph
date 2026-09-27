@@ -1,0 +1,7 @@
+scene "Icon" @id("bench_icon") {
+ canvas 256 256 background "#F6F4EF";
+ ellipse bg @id("icon_bg") { role "background" "icon"; cx 128; cy 128; rx 96; ry 96; fill "#D8E5DC"; }
+ path mark @id("icon_mark") { role "symbol" "focal"; d "M78 132 L112 166 L180 88 L194 102 L112 190 L64 144 Z"; fill "#314E43"; }
+ constrain icon_bg.center_x == canvas.center_x @required;
+ constrain icon_bg.center_y == canvas.center_y @required;
+}

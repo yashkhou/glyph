@@ -15,24 +15,30 @@ An AI agent can edit sophisticated visual work more reliably when it operates on
 - Semantic diff reports field-level changes by node.
 - Canvas width change re-centers constrained title/mascot in tests.
 - SVG retains stable IDs and semantic role metadata.
-- CommanderDraw bridge renders PNG.
+- CommanderDraw bridge renders PNG and fail-closed PDF output.
+- Renderer conformance reports exact/degraded/unsupported backend behavior; target strategy separates visual exports from semantic codegen.
+- Direct manipulation edits authored positions when free, translates paths through affine source transforms without rewriting path geometry, co-edits compatible equality offsets, preserves inequalities as feasibility guards, and inverts unambiguous typed component bindings into instance parameters. Rect/image/ellipse resize edits semantic dimensions or compatible size-relation offsets; unrotated authored paths resize through affine scale/translation while preserving `d`; unsafe/unsupported intent fails closed.
+- Studio undo/redo restores validated source snapshots; free/relation/path/component drag and rect/image/ellipse/path semantic resize round-trip through history, while infeasible constraint guards and unsupported inverse cases leave source unchanged.
 - Benchmark patch modifies two fields on `tree_right`, with 0 unrelated authored nodes changed and 0 required violations.
 
 ## Test suite
 
-`cargo test` currently covers parsing/solving, surgical editing, SVG semantic metadata, and responsive canvas re-solving.
+`cargo test` currently has 92 passing tests covering parsing/solving, dimensional/schema safety, components/imports, surgical property and constraint source editing, candidate-validated multi-constraint drag/resize intent, affine path manipulation/bounds and path resize fail-closed cases, component-parameter inverse manipulation, semantic resize, display-list lowering, SVG/CommanderDraw semantics, CoreText typography, variable fonts, Vision reconstruction contracts, renderer conformance, target strategy, PDF fail-closed behavior, and responsive canvas re-solving. Studio has 4 integration tests covering semantic drag/resize, path drag plus affine path resize and undo, component inverse edits, constraint editing/guard resolution, and source-snapshot undo/redo.
 
-## Not claimed yet
+## Current limitations after post-gate expansion
 
-- The current resolver is not a full linear Cassowary implementation.
-- Visual quality is not implied by compiler correctness.
-- Image→Glyph semantic reconstruction is not implemented.
-- No production round-trip canvas editor exists yet.
-- Components, style inheritance/composition, procedural scatter and motion are roadmap work.
+- Visual quality is not implied by compiler correctness or benchmark success.
+- Bounded Image→Glyph exists for structured UI/text/shape reconstruction; arbitrary photo/illustration reconstruction is not production-ready.
+- Native Studio v0.1 now has constraint-aware positional drag, compatible multi-equality offset co-editing with inequality feasibility guards, affine path drag and unrotated path resize, unambiguous component-parameter inverse editing, visible bottom-right semantic resize handles for rect/image/ellipse/path nodes, first-class constraint badges plus relation/strength/offset/remove/add editing, and validated source-snapshot undo/redo. Text-specific resize, multi-edge handles, rotated/constrained/component-owned path resize inference, and structural group membership/translation remain incomplete.
+- SwiftUI/Web Canvas semantic codegen is strategy-only and reports unsupported until explicit subset emitters and round-trip contracts exist.
+- PDF is a visual export through CommanderDraw; Glyph semantic IDs are not promised as a PDF round-trip format.
+- The Cassowary-class solver is rebuilt for each `solve_scene` call; a long-lived incremental editing session API is not exposed yet.
+- On macOS, typography now uses CoreText shaping, deterministic line breaking, real ascent/descent/leading metrics, glyph counts, explicit font resolution/substitution/fallback diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes. Non-macOS builds retain a deterministic heuristic fallback until a cross-platform shaper is added; CommanderDraw currently preserves advanced typography metadata but does not guarantee exact CoreText feature/axis rendering.
+- Motion is declarative sampled motion v1, not a full timeline/physics runtime.
 
-## Next go/no-go benchmark
+## Formal StepIsland comparison
 
-Encode representative StepIsland assets and compare Glyph against raw SVG, SwiftUI and current CommanderDraw on:
+The core gate passed. The remaining cross-representation benchmark compares a representative StepIsland scene against raw SVG, SwiftUI and current CommanderDraw on:
 
 - number of literal coordinates;
 - edit locality;

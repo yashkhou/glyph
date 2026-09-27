@@ -1,0 +1,11 @@
+scene "Navigation" @id("bench_nav") {
+ canvas 1024 180 background "#F7F6F2";
+ rect bar @id("nav_bar") { role "navigation" "surface"; x 80; y 45; width 864; height 90; rx 30; fill "#FFFFFF"; }
+ ellipse home @id("nav_home") { role "navigation" "item" "selected"; cx 230; cy 90; rx 28; ry 28; fill "#2D5B4B"; }
+ ellipse search @id("nav_search") { role "navigation" "item"; cx 512; cy 90; rx 22; ry 22; fill "#B7C4BE"; }
+ ellipse profile @id("nav_profile") { role "navigation" "item"; cx 794; cy 90; rx 22; ry 22; fill "#B7C4BE"; }
+ constrain nav_bar.center_x == canvas.center_x @required;
+ constrain nav_home.center_y == nav_bar.center_y @required;
+ constrain nav_search.center_y == nav_bar.center_y @required;
+ constrain nav_profile.center_y == nav_bar.center_y @required;
+}

@@ -1,4 +1,6 @@
 /target
+/studio/.build/
 
 # Generated benchmark/render outputs
 exports/
+/benchmarks/generated/

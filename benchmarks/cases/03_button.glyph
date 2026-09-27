@@ -1,0 +1,7 @@
+scene "Button" @id("bench_button") {
+ canvas 520 220 background "#F7F7F4";
+ rect button @id("button") { role "control" "button" "primary"; x 110; y 70; width 300; height 80; rx 26; fill "#1E5144"; }
+ text label @id("button_label") { role "label" "button"; content "Continue"; x 260; y 122; size 28; font "SF Pro"; weight "600"; align "center"; fill "#FFFFFF"; }
+ constrain button.center_x == canvas.center_x @required;
+ constrain label.center_x == button.center_x @required;
+}

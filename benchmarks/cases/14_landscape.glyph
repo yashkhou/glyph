@@ -1,0 +1,13 @@
+scene "Landscape" @id("bench_landscape") {
+ canvas 900 1400 background "#DDEEF2";
+ path mountain_back @id("mountain_back") { role "landscape" "mountain" "background"; d "M0 600 C150 460 300 520 450 350 C580 500 730 430 900 560 L900 900 L0 900 Z"; fill "#A9C1BE"; }
+ path mountain_front @id("mountain_front") { role "landscape" "mountain" "midground"; d "M0 760 C180 590 320 710 520 560 C660 460 770 570 900 500 L900 980 L0 980 Z"; fill "#789D87"; }
+ ellipse lake @id("landscape_lake") { role "landscape" "water"; cx 450; cy 930; rx 340; ry 170; fill "#6BAEC1"; }
+ path bridge @id("landscape_bridge") { role "landscape" "bridge" "architecture"; d "M280 930 C360 850 540 850 620 930 L595 950 C520 890 380 890 305 950 Z"; fill "#A8644B"; }
+ ellipse tree_l @id("landscape_tree_l") { role "landscape" "tree" "foreground"; cx 110; cy 1090; rx 110; ry 250; fill "#315E48"; }
+ ellipse tree_r @id("landscape_tree_r") { role "landscape" "tree" "foreground"; cx 790; cy 1110; rx 120; ry 270; fill "#315E48"; }
+ text title @id("landscape_title") { role "landscape" "heading"; content "A world with structure"; x 450; y 140; size 52; font "New York"; weight "700"; align "center"; fill "#263632"; }
+ constrain landscape_title.center_x == canvas.center_x @required;
+ constrain landscape_lake.center_x == canvas.center_x @required;
+ constrain landscape_bridge.center_x == landscape_lake.center_x @strong;
+}

@@ -1,0 +1,14 @@
+scene "Pattern" @id("bench_pattern") {
+ canvas 720 480 background "#F8F5EC";
+ ellipse p1 @id("dot_1") { role "pattern" "dot"; cx 100; cy 100; rx 34; ry 34; fill "#D88770"; }
+ ellipse p2 @id("dot_2") { role "pattern" "dot"; cx 260; cy 100; rx 34; ry 34; fill "#6F9A84"; }
+ ellipse p3 @id("dot_3") { role "pattern" "dot"; cx 420; cy 100; rx 34; ry 34; fill "#D6B75C"; }
+ ellipse p4 @id("dot_4") { role "pattern" "dot"; cx 580; cy 100; rx 34; ry 34; fill "#6E84A7"; }
+ ellipse p5 @id("dot_5") { role "pattern" "dot"; cx 180; cy 240; rx 34; ry 34; fill "#6E84A7"; }
+ ellipse p6 @id("dot_6") { role "pattern" "dot"; cx 340; cy 240; rx 34; ry 34; fill "#D88770"; }
+ ellipse p7 @id("dot_7") { role "pattern" "dot"; cx 500; cy 240; rx 34; ry 34; fill "#6F9A84"; }
+ ellipse p8 @id("dot_8") { role "pattern" "dot"; cx 100; cy 380; rx 34; ry 34; fill "#D6B75C"; }
+ ellipse p9 @id("dot_9") { role "pattern" "dot"; cx 260; cy 380; rx 34; ry 34; fill "#6E84A7"; }
+ ellipse p10 @id("dot_10") { role "pattern" "dot"; cx 420; cy 380; rx 34; ry 34; fill "#D88770"; }
+ ellipse p11 @id("dot_11") { role "pattern" "dot"; cx 580; cy 380; rx 34; ry 34; fill "#6F9A84"; }
+}

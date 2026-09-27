@@ -481,6 +481,52 @@ extension GlyphDocumentModelTests {
 
 extension GlyphDocumentModelTests {
     @MainActor
+    func testStudioHierarchyReparentAndUndoRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-reparent-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("reparent.glyph")
+        let source = #"""
+        scene "Studio Reparent" {
+          canvas 420 260;
+          rect first @id("first") { x 40px; y 50px; width 80px; height 40px; }
+          rect second @id("second") { x 150px; y 80px; width 60px; height 50px; }
+          rect third @id("third") { x 250px; y 120px; width 40px; height 30px; }
+          group left_group @id("left_group") { member first; member second; }
+          group right_group @id("right_group") { member third; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.sourceHierarchy.first(where: { $0.id == "second" })?.parent, "left_group")
+
+        model.select("second")
+        XCTAssertEqual(model.selectedHierarchyNode?.id, "second")
+        XCTAssertEqual(Set(model.availableHierarchyParents.map(\.id)), Set(["left_group", "right_group"]))
+        model.reparentSelected(to: "right_group")
+        let moved = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(moved.contains("group left_group @id(\"left_group\") { member first;"), moved)
+        XCTAssertTrue(moved.contains("member second;"), moved)
+        XCTAssertEqual(model.sourceHierarchy.first(where: { $0.id == "second" })?.parent, "right_group")
+        XCTAssertEqual(model.displayList?.items.filter { $0.primitive.kind != "group" }.map(\.id), ["first", "second", "third"])
+
+        model.reparentSelected(to: nil)
+        XCTAssertNil(model.sourceHierarchy.first(where: { $0.id == "second" })?.parent)
+        XCTAssertTrue(model.canUndo)
+
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.sourceHierarchy.first(where: { $0.id == "second" })?.parent, "right_group")
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.sourceHierarchy.first(where: { $0.id == "second" })?.parent, "left_group")
+    }
+}
+
+extension GlyphDocumentModelTests {
+    @MainActor
     func testStudioSourceHierarchyReorderAndUndoRoundTrip() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("glyph-studio-reorder-tests-\(UUID().uuidString)")

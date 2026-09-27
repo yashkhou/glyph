@@ -105,6 +105,26 @@ grep -q '"kind": "instance:badge"' "$TMP_VERIFY/hierarchy.json"
 "$BIN" node-move "$TMP_VERIFY/hierarchy.glyph" badge1/bg back before --output "$TMP_VERIFY/hierarchy-moved.glyph"
 "$BIN" check "$TMP_VERIFY/hierarchy-moved.glyph"
 [[ "$(grep -n 'instance badge badge1' "$TMP_VERIFY/hierarchy-moved.glyph" | cut -d: -f1)" -lt "$(grep -n 'rect back' "$TMP_VERIFY/hierarchy-moved.glyph" | cut -d: -f1)" ]]
+cat > "$TMP_VERIFY/reparent.glyph" <<'EOF'
+scene "Reparent Verify" {
+  canvas 300 200;
+  rect a @id("a") { x 10; y 10; width 30; height 30; }
+  rect b @id("b") { x 60; y 10; width 30; height 30; }
+  rect c @id("c") { x 110; y 10; width 30; height 30; }
+  group left @id("left") { member a; member b; }
+  group right @id("right") { member c; }
+}
+EOF
+"$BIN" hierarchy "$TMP_VERIFY/reparent.glyph" > "$TMP_VERIFY/reparent-before.json"
+grep -A8 '"id": "b"' "$TMP_VERIFY/reparent-before.json" | grep -q '"parent": "left"'
+"$BIN" node-reparent "$TMP_VERIFY/reparent.glyph" b --parent right --output "$TMP_VERIFY/reparent-right.glyph"
+"$BIN" check "$TMP_VERIFY/reparent-right.glyph"
+"$BIN" hierarchy "$TMP_VERIFY/reparent-right.glyph" > "$TMP_VERIFY/reparent-right.json"
+grep -A8 '"id": "b"' "$TMP_VERIFY/reparent-right.json" | grep -q '"parent": "right"'
+"$BIN" node-reparent "$TMP_VERIFY/reparent-right.glyph" b --output "$TMP_VERIFY/reparent-root.glyph"
+"$BIN" check "$TMP_VERIFY/reparent-root.glyph"
+"$BIN" hierarchy "$TMP_VERIFY/reparent-root.glyph" > "$TMP_VERIFY/reparent-root.json"
+grep -A8 '"id": "b"' "$TMP_VERIFY/reparent-root.json" | grep -q '"parent": null'
 cat > "$TMP_VERIFY/path.glyph" <<'EOF'
 scene "Path Verify" {
   canvas 300 200;

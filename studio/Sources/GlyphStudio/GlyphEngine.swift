@@ -56,6 +56,16 @@ final class GlyphDocumentModel: ObservableObject {
         !isDirty && selectedIDs.count == 1 && selectedItem?.primitive.kind == "group"
     }
 
+    var selectedHierarchyNode: DirectSourceNode? {
+        guard !isDirty, selectedIDs.count == 1, let selectedID else { return nil }
+        return sourceHierarchy.first { $0.id == selectedID && !$0.kind.hasPrefix("instance:") }
+    }
+
+    var availableHierarchyParents: [DirectSourceNode] {
+        guard let selected = selectedHierarchyNode else { return [] }
+        return sourceHierarchy.filter { $0.kind == "group" && $0.id != selected.id }
+    }
+
     private var paintHierarchy: [DirectSourceNode] {
         sourceHierarchy.filter { $0.kind != "group" }
     }
@@ -435,6 +445,34 @@ final class GlyphDocumentModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
             status = "Ungroup rejected"
+        }
+    }
+
+    func reparentSelected(to parent: String?) {
+        guard let url = sourceURL, let selected = selectedHierarchyNode else { return }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-reparent-\(UUID().uuidString).glyph")
+        defer {
+            try? FileManager.default.removeItem(at: temporary)
+            try? FileManager.default.removeItem(at: beforeURL)
+        }
+        do {
+            try sourceText.write(to: beforeURL, atomically: true, encoding: .utf8)
+            var arguments = ["node-reparent", beforeURL.path, selected.id]
+            if let parent { arguments += ["--parent", parent] }
+            arguments += ["--output", temporary.path]
+            _ = try runGlyph(arguments)
+            _ = try runGlyph(["check", temporary.path])
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(sourceText)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            select(selected.id)
+            status = parent.map { "Moved \(selected.id) into \($0)" } ?? "Moved \(selected.id) to scene root"
+        } catch {
+            self.error = error.localizedDescription
+            status = "Reparent rejected"
         }
     }
 

@@ -28,6 +28,8 @@ struct DirectSourceNode: Decodable, Identifiable {
     let name: String
     let kind: String
     let line: Int
+    let parent: String?
+    let members: [String]
 }
 
 struct HierarchyReport: Decodable {

@@ -611,20 +611,50 @@ pub struct DirectSourceNode {
     pub name: String,
     pub kind: String,
     pub line: usize,
+    pub parent: Option<String>,
+    pub members: Vec<String>,
 }
 
 pub fn direct_source_nodes(source: &str) -> Result<Vec<DirectSourceNode>> {
-    Ok(direct_layer_owners(source)?
-        .into_iter()
-        .enumerate()
-        .map(|(index, owner)| DirectSourceNode {
+    let owners = direct_layer_owners(source)?;
+    let mut nodes = Vec::with_capacity(owners.len());
+    for (index, owner) in owners.into_iter().enumerate() {
+        let (parent, members) = if owner.is_instance {
+            (None, Vec::new())
+        } else {
+            let parents = group_owners_for_direct_node(source, &owner.id)?;
+            if parents.len() > 1 {
+                return Err(anyhow!(
+                    "node {} belongs to multiple structural groups: {}",
+                    owner.id,
+                    parents.join(", ")
+                ));
+            }
+            let members = if owner.kind == "group" {
+                group_member_spans(source, &owner.id)?
+                    .into_iter()
+                    .map(|(member, _, _)| {
+                        direct_node_reference(source, &member)
+                            .map(|(stable_id, _, _)| stable_id)
+                            .unwrap_or(member)
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            (parents.into_iter().next(), members)
+        };
+        nodes.push(DirectSourceNode {
             index,
             id: owner.id,
             name: owner.name,
             kind: owner.kind,
             line: owner.line,
-        })
-        .collect())
+            parent,
+            members,
+        });
+    }
+    Ok(nodes)
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -1366,6 +1396,54 @@ pub fn remove_source_group_member(source: &str, group_id: &str, member_id: &str)
     let out = remove_statement_or_line(source, start, end);
     validate_structural_group_source(&out)?;
     Ok(out)
+}
+
+pub fn reparent_source_node(
+    source: &str,
+    node_id: &str,
+    new_parent: Option<&str>,
+) -> Result<String> {
+    let (stable_id, _, _) = direct_node_reference(source, node_id).map_err(|_| {
+        anyhow!(
+            "node {node_id} is not a directly-authored source node that can participate in structural hierarchy"
+        )
+    })?;
+    let owners = group_owners_for_direct_node(source, &stable_id)?;
+    if owners.len() > 1 {
+        return Err(anyhow!(
+            "node {node_id} belongs to multiple structural groups: {}",
+            owners.join(", ")
+        ));
+    }
+    let current_parent = owners.into_iter().next();
+
+    let target_parent = match new_parent {
+        Some(parent) => {
+            let (parent_id, _, kind) = direct_node_reference(source, parent)?;
+            if kind != "group" {
+                return Err(anyhow!("node {parent} is not a structural group"));
+            }
+            if parent_id == stable_id {
+                return Err(anyhow!("group {node_id} cannot contain itself"));
+            }
+            Some(parent_id)
+        }
+        None => None,
+    };
+
+    if current_parent == target_parent {
+        return Ok(source.to_string());
+    }
+
+    let mut edited = source.to_string();
+    if let Some(parent) = current_parent {
+        edited = remove_source_group_member(&edited, &parent, &stable_id)?;
+    }
+    if let Some(parent) = target_parent {
+        edited = add_source_group_member(&edited, &parent, &stable_id)?;
+    }
+    validate_structural_group_source(&edited)?;
+    Ok(edited)
 }
 
 pub fn remove_source_group(source: &str, group_id: &str) -> Result<String> {

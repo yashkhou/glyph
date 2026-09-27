@@ -496,6 +496,32 @@ struct ContentView: View {
                                 }
                             }
                         }
+                        if let hierarchy = model.selectedHierarchyNode {
+                            inspectorSection("HIERARCHY") {
+                                VStack(alignment: .leading, spacing: 7) {
+                                    Text(hierarchy.parent.map { "parent · \($0)" } ?? "parent · scene root")
+                                        .font(.system(size: 10.5, design: .monospaced))
+                                        .foregroundStyle(.secondary)
+                                    if !hierarchy.members.isEmpty {
+                                        Text("members · \(hierarchy.members.joined(separator: ", "))")
+                                            .font(.system(size: 9.5, design: .monospaced))
+                                            .foregroundStyle(.secondary)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Menu("Move to…") {
+                                        Button("Scene root") { model.reparentSelected(to: nil) }
+                                            .disabled(hierarchy.parent == nil)
+                                        if !model.availableHierarchyParents.isEmpty { Divider() }
+                                        ForEach(model.availableHierarchyParents) { group in
+                                            Button(group.name) { model.reparentSelected(to: group.id) }
+                                                .disabled(hierarchy.parent == group.id)
+                                        }
+                                    }
+                                    .disabled(model.isDirty)
+                                    .help("Change structural parent without changing paint order or geometry")
+                                }
+                            }
+                        }
                         inspectorSection("SOURCE") {
                             Text("line \(record.provenance.line) · \(record.provenance.authored ? "authored" : "generated")")
                                 .font(.system(size: 11, design: .monospaced))

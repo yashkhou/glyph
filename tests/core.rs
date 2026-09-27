@@ -3825,6 +3825,90 @@ fn source_group_create_add_remove_and_ungroup_round_trip() {
 }
 
 #[test]
+fn source_hierarchy_reports_parent_members_and_reparents_without_reordering() {
+    let src = r##"scene "Reparent" {
+  canvas 400 260;
+  rect a @id("a") { x 20px; y 20px; width 40px; height 40px; }
+  rect b @id("b") { x 80px; y 20px; width 40px; height 40px; }
+  rect c @id("c") { x 140px; y 20px; width 40px; height 40px; }
+  group inner @id("inner") { member a; member b; }
+  group outer @id("outer") { member inner; member c; }
+}"##;
+
+    let hierarchy = glyph::direct_source_nodes(src).unwrap();
+    let inner = hierarchy.iter().find(|node| node.id == "inner").unwrap();
+    assert_eq!(inner.parent.as_deref(), Some("outer"));
+    assert_eq!(inner.members, vec!["a", "b"]);
+    let b = hierarchy.iter().find(|node| node.id == "b").unwrap();
+    assert_eq!(b.parent.as_deref(), Some("inner"));
+    let before_order = hierarchy
+        .iter()
+        .map(|node| node.id.clone())
+        .collect::<Vec<_>>();
+
+    let moved = glyph::reparent_source_node(src, "b", Some("outer")).unwrap();
+    let moved_hierarchy = glyph::direct_source_nodes(&moved).unwrap();
+    assert_eq!(
+        moved_hierarchy
+            .iter()
+            .find(|node| node.id == "b")
+            .unwrap()
+            .parent
+            .as_deref(),
+        Some("outer")
+    );
+    assert_eq!(
+        moved_hierarchy
+            .iter()
+            .find(|node| node.id == "inner")
+            .unwrap()
+            .members,
+        vec!["a"]
+    );
+    assert_eq!(
+        moved_hierarchy
+            .iter()
+            .find(|node| node.id == "outer")
+            .unwrap()
+            .members,
+        vec!["inner", "c", "b"]
+    );
+    assert_eq!(
+        moved_hierarchy
+            .iter()
+            .map(|node| node.id.clone())
+            .collect::<Vec<_>>(),
+        before_order
+    );
+
+    let rooted = glyph::reparent_source_node(&moved, "b", None).unwrap();
+    let rooted_hierarchy = glyph::direct_source_nodes(&rooted).unwrap();
+    assert!(
+        rooted_hierarchy
+            .iter()
+            .find(|node| node.id == "b")
+            .unwrap()
+            .parent
+            .is_none()
+    );
+    assert_eq!(
+        rooted_hierarchy
+            .iter()
+            .map(|node| node.id.clone())
+            .collect::<Vec<_>>(),
+        before_order
+    );
+
+    let cycle = glyph::reparent_source_node(src, "outer", Some("inner")).unwrap_err();
+    assert!(cycle.to_string().contains("cycle"), "{cycle}");
+    let self_parent = glyph::reparent_source_node(src, "inner", Some("inner")).unwrap_err();
+    assert!(
+        self_parent.to_string().contains("cannot contain itself"),
+        "{self_parent}"
+    );
+}
+
+#[test]
 fn source_node_reorder_moves_only_direct_declaration_and_updates_display_order() {
     let same_line = r##"scene "Same Line" { canvas 100 100; rect a @id("a") { x 0; y 0; width 10; height 10; } rect b @id("b") { x 20; y 0; width 10; height 10; } rect c @id("c") { x 40; y 0; width 10; height 10; } }"##;
     assert_eq!(

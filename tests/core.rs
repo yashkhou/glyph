@@ -2979,13 +2979,19 @@ fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
         framed.extend(body);
         framed
     }
-    let source = "scene \"LSP\" {\n  canvas 200 120;\n  rect card {\n    \n  }\n}\n";
+    let source = "scene \"LSP\" {\n  canvas 200 120;\n  rect card {\n    \n    x 20px; y 20px; width 80px; height 60px; interactive true; a11y_role button;\n  }\n  group pair { member card; }\n  constrain card.left == canvas.left + 20px @required;\n}\n";
     let uri = "file:///tmp/lsp-test.glyph";
     let messages = [
         serde_json::json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}),
         serde_json::json!({"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":uri,"languageId":"glyph","version":1,"text":source}}}),
         serde_json::json!({"jsonrpc":"2.0","id":2,"method":"textDocument/completion","params":{"textDocument":{"uri":uri},"position":{"line":3,"character":4}}}),
-        serde_json::json!({"jsonrpc":"2.0","id":3,"method":"shutdown","params":null}),
+        serde_json::json!({"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":4,"method":"textDocument/references","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13},"context":{"includeDeclaration":true}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":5,"method":"textDocument/prepareRename","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":6,"method":"textDocument/rename","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13},"newName":"panel"}}),
+        serde_json::json!({"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":{"textDocument":{"uri":uri},"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":1}},"context":{"diagnostics":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":1}},"code":"glyph.accessibility.missing_accessible_name","message":"missing name"}]}}}),
+        serde_json::json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":uri,"version":2},"contentChanges":[{"range":{"start":{"line":3,"character":4},"end":{"line":3,"character":4}},"text":"width 90px;"}]}}),
+        serde_json::json!({"jsonrpc":"2.0","id":8,"method":"shutdown","params":null}),
         serde_json::json!({"jsonrpc":"2.0","method":"exit","params":null}),
     ];
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_glyph"))
@@ -3010,9 +3016,15 @@ fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
         stdout.contains("textDocument/publishDiagnostics"),
         "{stdout}"
     );
+    assert!(stdout.contains("\"textDocumentSync\":2"), "{stdout}");
+    assert!(stdout.contains("\"definitionProvider\":true"), "{stdout}");
+    assert!(stdout.contains("\"referencesProvider\":true"), "{stdout}");
     assert!(stdout.contains("\"label\":\"width\""), "{stdout}");
+    assert!(stdout.contains("\"placeholder\":\"card\""), "{stdout}");
+    assert!(stdout.contains("\"newText\":\"panel\""), "{stdout}");
+    assert!(stdout.contains("Add accessible name to card"), "{stdout}");
     assert!(
-        stdout.contains("\"id\":3,\"jsonrpc\":\"2.0\",\"result\":null"),
+        stdout.contains("\"id\":8,\"jsonrpc\":\"2.0\",\"result\":null"),
         "{stdout}"
     );
 }
@@ -3043,4 +3055,95 @@ scene "Main" {
     let scene = glyph::load_project_scene_with_source(&entry, overlay).unwrap();
     let card = scene.nodes.iter().find(|node| node.id == "card").unwrap();
     assert_eq!(card.authored.props["fill"].text(), Some("#112233"));
+}
+
+#[test]
+fn language_navigation_finds_definition_and_document_references() {
+    let src = r##"scene "Navigation" {
+  canvas 400 240;
+  rect box @id("stable-box") { x 20px; y 20px; width 80px; height 60px; }
+  group pair @id("pair") { member box; }
+  constrain box.left == canvas.left + 20px @required;
+  state active { set box.fill "#ff0000"; }
+  component card {
+    rect box @id("local-box") { x 0px; y 0px; width 20px; height 20px; }
+    param inset: Length -> box.x = 0px;
+  }
+}"##;
+    let position = glyph::TextPosition {
+        line: 4,
+        character: 13,
+    };
+    let refs = glyph::references_at(src, position, true);
+    assert_eq!(refs.len(), 4, "{refs:?}");
+    assert_eq!(
+        refs.iter()
+            .filter(|reference| reference.declaration)
+            .count(),
+        1
+    );
+    let definition = glyph::definition_at(src, position).expect("definition");
+    assert_eq!(definition.range.start.line, 2);
+    assert!(refs.iter().all(|reference| reference.range.start.line < 7));
+}
+
+#[test]
+fn language_rename_preserves_stable_ids_and_component_local_scope() {
+    let src = r##"scene "Rename" {
+  canvas 400 240;
+  rect box @id("stable-box") { x 20px; y 20px; width 80px; height 60px; }
+  group pair @id("pair") { member box; }
+  constrain box.left == canvas.left + 20px @required;
+  state active { set box.fill "#ff0000"; }
+  component card {
+    rect box @id("local-box") { x 0px; y 0px; width 20px; height 20px; }
+    param inset: Length -> box.x = 0px;
+  }
+}"##;
+    let position = glyph::TextPosition {
+        line: 4,
+        character: 13,
+    };
+    let plan = glyph::rename_node_at(src, position, "hero").unwrap();
+    assert_eq!(plan.symbol, "box");
+    assert_eq!(plan.edits.len(), 4);
+    let edited = glyph::apply_source_text_edits(src, &plan.edits).unwrap();
+    assert!(edited.contains("rect hero @id(\"stable-box\")"), "{edited}");
+    assert!(edited.contains("member hero;"), "{edited}");
+    assert!(edited.contains("constrain hero.left"), "{edited}");
+    assert!(edited.contains("set hero.fill"), "{edited}");
+    assert!(edited.contains("rect box @id(\"local-box\")"), "{edited}");
+    assert!(edited.contains("-> box.x = 0px;"), "{edited}");
+    parse_scene(&edited, "renamed.glyph").unwrap();
+
+    let conflict = glyph::rename_node_at(src, position, "pair").unwrap_err();
+    assert!(conflict.contains("already exists"), "{conflict}");
+    let reserved = glyph::rename_node_at(src, position, "rect").unwrap_err();
+    assert!(
+        reserved.contains("safe Glyph node identifier"),
+        "{reserved}"
+    );
+}
+
+#[test]
+fn language_code_action_fixes_missing_accessible_name() {
+    let src = r##"scene "A11y Fix" {
+  canvas 200 120;
+  rect submit_button @id("submit") { x 20px; y 20px; width 60px; height 60px; interactive true; a11y_role button; }
+}"##;
+    let diagnostics = glyph::diagnose_source(src, "a11y-fix.glyph");
+    let missing = diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code == "glyph.accessibility.missing_accessible_name")
+        .expect("missing-name diagnostic");
+    let actions = glyph::code_actions(src, std::slice::from_ref(missing));
+    assert_eq!(actions.len(), 1, "{actions:?}");
+    let edited = glyph::apply_source_text_edits(src, &actions[0].edits).unwrap();
+    assert!(edited.contains("a11y_label \"submit button\";"), "{edited}");
+    let after = glyph::diagnose_source(&edited, "a11y-fix.glyph");
+    assert!(
+        !after
+            .iter()
+            .any(|diagnostic| diagnostic.code == "glyph.accessibility.missing_accessible_name")
+    );
 }

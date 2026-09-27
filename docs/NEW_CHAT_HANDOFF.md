@@ -23,12 +23,12 @@ After reading, inspect current git status and live Glyph capabilities, create a 
 - Repo: `/Users/joshuakhoury/Projects/Glyph`
 - Commander workspace: `Glyph`
 - Branch: `master`
-- Last committed HEAD observed at handoff: `8d5ffccbb2308b0c1a100bb56bc0054f528b9925`
+- Committed HEAD changes as milestones land; always trust `git status` / `git log -1` over a pinned hash in this handoff.
 - Current product version: `0.1.0` research prototype, heavily expanded beyond the initial commit.
 - Canonical representation: **GSIR — Glyph Scene IR**.
 - Source extension: `.glyph`.
 
-The working tree is intentionally dirty. It contains the implementation completed in this chat. **Do not use `git reset --hard`, clean untracked files, or restore the repo to HEAD.**
+Always inspect the working tree before acting. Verified milestone work is committed when a block is complete, but a later chat may legitimately leave new in-progress changes. **Do not use `git reset --hard`, clean untracked files, or restore the repo to HEAD unless the user explicitly requests destructive rollback.**
 ## Current implementation state
 
 The architectural hypothesis has been proven enough to continue. Glyph is no longer just research.
@@ -56,16 +56,16 @@ Working today:
 - Studio `LAST CHANGE` semantic visual-diff trace.
 - Bounded Apple Vision image → editable Glyph import for structured UI screenshots.
 - Vision import preserves inference provenance/confidence and remains explicitly non-authoritative.
-- Commander plugin integration exposes the established Glyph agent tool surface including `glyph_import_image`; the core CLI/capability contract additionally includes first-class constraint/direct-manipulation operations plus deterministic language diagnostics, context-aware completion and a stdio LSP server.
+- Commander plugin integration exposes the established Glyph agent tool surface including `glyph_import_image`; the core CLI/capability contract additionally includes first-class constraint/direct-manipulation operations plus deterministic language diagnostics/completion, document definition/references, fail-closed top-level node rename, accessibility quick fixes and a UTF-16-safe incremental stdio LSP server.
 - Dimensional units/types, source/GSIR versioning + migration, typed components/slots/variants/overrides, and local project imports are implemented.
 - Canonical graphics now include image nodes, affine transforms, resolved clip/mask references, and typed linear/radial paints in display-list schema v3.
 - Direct manipulation now candidate-validates compatible multi-constraint intent: equality offsets can co-edit, inequalities stay feasibility guards, and unsafe/newly-relaxed intent fails closed.
 - Semantic resize supports rect/image/ellipse plus explicit text wrap frames; Studio exposes edge/corner handles with opposite-anchor preservation. Structural groups own validated membership and translate leaf members through semantic plans. Unrotated paths preserve authored `d`, can co-edit compatible translate constraints, and component-owned paths invert explicit affine parameter bindings when unambiguous.
 
-Live `glyph capabilities` reports GSIR canonical, source schema v1 / GSIR schema v2, Cassowary-class weighted linear solver v1, display-list/object-map v3, typed paints/transforms/clips/masks, CoreText-backed text semantics, source-backed constraint/direct-manipulation APIs, deterministic language diagnostics/context completion/stdio LSP v1, Studio v0.1, sampled motion v1, visual diff v1, accessibility audit v1, and bounded Apple Vision import v1.
+Live `glyph capabilities` reports GSIR canonical, source schema v1 / GSIR schema v2, Cassowary-class weighted linear solver v1, display-list/object-map v3, typed paints/transforms/clips/masks, CoreText-backed text semantics, source-backed constraint/direct-manipulation APIs, deterministic language diagnostics/context completion/definition/references/safe rename/quick fixes with UTF-16-safe incremental stdio LSP v1, Studio v0.1, sampled motion v1, visual diff v1, accessibility audit v1, and bounded Apple Vision import v1.
 ## Verified evidence at handoff
 
-- Rust integration suite: **114/114 passing**.
+- Rust suite: **119/119 passing total** (117 integration tests + 2 LSP synchronization unit tests).
 - Native Studio integration suite: **7/7 passing**.
 - `cargo fmt --check`: passing.
 - Release build: passing.
@@ -94,7 +94,7 @@ Use these percentages only as planning estimates, not test scores:
 - Full original research vision: **~62% complete**.
 - Polished public Glyph 1.0 product: **~50–55% complete**.
 
-The central architecture is validated. Direct-manipulation coverage, first-class accessibility semantics/auditing, and the production-linked diagnostics/completion/stdio-LSP baseline are implemented. Most remaining engineering weight is now in rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, broader Image→Glyph, richer motion, advanced LSP navigation/actions, packaging/assets, fuzzing/performance/security and release hardening.
+The central architecture is validated. Direct-manipulation coverage, first-class accessibility semantics/auditing, and the production-linked diagnostics/completion/navigation/rename/quick-fix incremental-LSP foundation are implemented. Most remaining engineering weight is now in rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, broader Image→Glyph, richer motion, cross-file/advanced editor refactors, packaging/assets, fuzzing/performance/security and release hardening.
 ## What to build next — dependency order
 
 Do not jump straight to arbitrary photo reconstruction or cosmetic Studio features. Continue in this order unless a newly discovered blocker changes the dependency graph.
@@ -135,7 +135,7 @@ Do not jump straight to arbitrary photo reconstruction or cosmetic Studio featur
 
 ### Phase 5 — Motion, accessibility, tooling and production hardening
 
-Accessibility semantics/auditing and the diagnostics/autocomplete/stdio-LSP baseline are implemented. Finish richer timeline/state/spring semantics, advanced LSP navigation/actions, packages/assets/project bundles, retained migration coverage, fuzzing, performance profiling, release packaging and security review.
+Accessibility semantics/auditing and the diagnostics/autocomplete/navigation/rename/quick-fix incremental-LSP foundation are implemented. Finish richer timeline/state/spring semantics, cross-file/advanced language refactors, packages/assets/project bundles, retained migration coverage, fuzzing, performance profiling, release packaging and security review.
 ## Non-negotiable architecture rules
 
 - **GSIR is canonical.** The surface DSL is replaceable; the semantic IR is the center.
@@ -167,10 +167,10 @@ Do not "correct" the repo by reverting newer implementation to match stale prose
 1. Read the five files listed in the bootstrap prompt.
 2. Run `git status` and inspect the existing working tree; preserve it.
 3. Run live `glyph capabilities`.
-4. Run `cargo fmt --check` and `cargo test`; expected baseline at this handoff is 114 passing Rust integration tests, plus 7 Studio integration tests through the full verification script.
+4. Run `cargo fmt --check` and `cargo test`; expected baseline at this handoff is 119 passing Rust tests total (117 integration + 2 LSP sync unit tests), plus 7 Studio integration tests through the full verification script.
 5. Build the release binary if source has changed.
 6. Create a non-destructive Commander Git snapshot/checkpoint before the next substantive implementation block.
-7. Continue the remaining roadmap from the current frontier: rotated/ambiguous inverse-graphics cases and deeper hierarchy/component Studio operations first, then advanced LSP references/rename/code actions as justified, package/assets/project hardening, fuzzing/performance/security/release work, and only then the still-gated semantic SwiftUI/Web Canvas emitters unless a dependency changes. Do not reopen completed language/rendering/direct-manipulation or baseline diagnostics/completion work unless a real regression requires it.
+7. Continue the remaining roadmap from the current frontier: rotated/ambiguous inverse-graphics cases and deeper hierarchy/component Studio operations first, then package/assets/project hardening, fuzzing/performance/security/release work, and only then the still-gated semantic SwiftUI/Web Canvas emitters unless a dependency changes. Document-scoped LSP definition/references/safe rename/quick fixes and incremental sync are complete; revisit language tooling only for cross-file indexing/refactors or a real integration need.
 8. After each meaningful subsystem, rerun the unchanged core gate and relevant targeted benchmark. Do not weaken a benchmark because a new feature fails it.
 
 ## Useful paths

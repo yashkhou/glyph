@@ -34,8 +34,10 @@ pub use display_list::{
     DisplayTransform, ObjectRecord, build_display_list,
 };
 pub use language_service::{
-    CompletionItem, DiagnosticSeverity, LanguageDiagnostic, TextPosition, TextRange,
-    complete_source, diagnose_project_source, diagnose_source,
+    CompletionItem, DiagnosticSeverity, LanguageCodeAction, LanguageDiagnostic, RenamePlan,
+    SourceTextEdit, SymbolReference, TextPosition, TextRange, apply_source_text_edits,
+    code_actions, complete_source, definition_at, diagnose_project_source, diagnose_source,
+    references_at, rename_node_at,
 };
 pub use manipulation::{
     ComponentParameterEdit, ConstraintOffsetEdit, DirectHandleResizePlan, DirectManipulationPlan,

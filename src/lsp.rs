@@ -1,5 +1,7 @@
 use crate::language_service::{
-    DiagnosticSeverity, TextPosition, complete_source, diagnose_project_source, diagnose_source,
+    DiagnosticSeverity, LanguageDiagnostic, TextPosition, TextRange, byte_offset_at_position,
+    code_actions, complete_source, definition_at, diagnose_project_source, diagnose_source,
+    node_symbol_at_position, references_at, rename_node_at,
 };
 use anyhow::{Context, Result, anyhow};
 use serde_json::{Value, json};
@@ -123,6 +125,66 @@ fn text_document_uri(params: &Value) -> Option<&str> {
     params.get("textDocument")?.get("uri")?.as_str()
 }
 
+fn position_from_json(value: &Value) -> TextPosition {
+    TextPosition {
+        line: value["line"].as_u64().unwrap_or(0) as u32,
+        character: value["character"].as_u64().unwrap_or(0) as u32,
+    }
+}
+
+fn range_from_json(value: &Value) -> TextRange {
+    TextRange {
+        start: position_from_json(&value["start"]),
+        end: position_from_json(&value["end"]),
+    }
+}
+
+pub(crate) fn apply_content_changes(source: &str, changes: &[Value]) -> Result<String> {
+    let mut current = source.to_string();
+    for change in changes {
+        let replacement = change
+            .get("text")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let Some(range) = change.get("range") else {
+            current = replacement.to_string();
+            continue;
+        };
+        let range = range_from_json(range);
+        let start = byte_offset_at_position(&current, range.start);
+        let end = byte_offset_at_position(&current, range.end);
+        if start > end || !current.is_char_boundary(start) || !current.is_char_boundary(end) {
+            return Err(anyhow!("invalid incremental text change range"));
+        }
+        current.replace_range(start..end, replacement);
+    }
+    Ok(current)
+}
+
+fn workspace_edit(uri: &str, edits: impl IntoIterator<Item = (TextRange, String)>) -> Value {
+    let edits = edits
+        .into_iter()
+        .map(|(range, new_text)| json!({"range":range,"newText":new_text}))
+        .collect::<Vec<_>>();
+    let mut changes = serde_json::Map::new();
+    changes.insert(uri.to_string(), Value::Array(edits));
+    json!({"changes":Value::Object(changes)})
+}
+
+fn diagnostics_from_code_action(params: &Value) -> Vec<LanguageDiagnostic> {
+    params["context"]["diagnostics"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|item| LanguageDiagnostic {
+            severity: DiagnosticSeverity::Information,
+            code: item["code"].as_str().unwrap_or_default().to_string(),
+            message: item["message"].as_str().unwrap_or_default().to_string(),
+            range: range_from_json(&item["range"]),
+        })
+        .collect()
+}
+
 pub fn run_stdio() -> Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -143,8 +205,12 @@ pub fn run_stdio() -> Result<()> {
                             id,
                             json!({
                                 "capabilities": {
-                                    "textDocumentSync": 1,
-                                    "completionProvider": {"resolveProvider":false,"triggerCharacters":["."]}
+                                    "textDocumentSync": 2,
+                                    "completionProvider": {"resolveProvider":false,"triggerCharacters":["."]},
+                                    "definitionProvider": true,
+                                    "referencesProvider": true,
+                                    "renameProvider": {"prepareProvider":true},
+                                    "codeActionProvider": {"codeActionKinds":["quickfix"]}
                                 },
                                 "serverInfo":{"name":"glyph-lsp","version":env!("CARGO_PKG_VERSION")}
                             }),
@@ -175,15 +241,24 @@ pub fn run_stdio() -> Result<()> {
                 let Some(uri) = text_document_uri(&params).map(str::to_string) else {
                     continue;
                 };
-                let text = params["contentChanges"]
+                let changes = params["contentChanges"]
                     .as_array()
-                    .and_then(|changes| changes.last())
-                    .and_then(|change| change.get("text"))
-                    .and_then(Value::as_str)
-                    .unwrap_or_default()
-                    .to_string();
-                documents.insert(uri.clone(), text.clone());
-                write_message(&mut writer, &diagnostic_notification(&uri, &text))?;
+                    .cloned()
+                    .unwrap_or_default();
+                let current = documents.get(&uri).cloned().unwrap_or_default();
+                match apply_content_changes(&current, &changes) {
+                    Ok(text) => {
+                        documents.insert(uri.clone(), text.clone());
+                        write_message(&mut writer, &diagnostic_notification(&uri, &text))?;
+                    }
+                    Err(error) => {
+                        write_message(
+                            &mut writer,
+                            &json!({"jsonrpc":"2.0","method":"window/logMessage",
+                                "params":{"type":1,"message":format!("Glyph incremental sync rejected: {error}")}}),
+                        )?;
+                    }
+                }
             }
             "textDocument/didClose" => {
                 if let Some(uri) = text_document_uri(&params) {
@@ -207,6 +282,101 @@ pub fn run_stdio() -> Result<()> {
                     write_message(&mut writer, &response(id, result))?;
                 }
             }
+            "textDocument/definition" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let position = position_from_json(&params["position"]);
+                    let result = documents
+                        .get(uri)
+                        .and_then(|source| definition_at(source, position))
+                        .map(|reference| json!({"uri":uri,"range":reference.range}))
+                        .unwrap_or(Value::Null);
+                    write_message(&mut writer, &response(id, result))?;
+                }
+            }
+            "textDocument/references" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let position = position_from_json(&params["position"]);
+                    let include_declaration = params["context"]["includeDeclaration"]
+                        .as_bool()
+                        .unwrap_or(true);
+                    let result = documents
+                        .get(uri)
+                        .map(|source| {
+                            references_at(source, position, include_declaration)
+                                .into_iter()
+                                .map(|reference| json!({"uri":uri,"range":reference.range}))
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
+                    write_message(&mut writer, &response(id, Value::Array(result)))?;
+                }
+            }
+            "textDocument/prepareRename" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let position = position_from_json(&params["position"]);
+                    let result = documents
+                        .get(uri)
+                        .and_then(|source| node_symbol_at_position(source, position))
+                        .map(|(symbol, range)| json!({"range":range,"placeholder":symbol}))
+                        .unwrap_or(Value::Null);
+                    write_message(&mut writer, &response(id, result))?;
+                }
+            }
+            "textDocument/rename" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let position = position_from_json(&params["position"]);
+                    let new_name = params["newName"].as_str().unwrap_or_default();
+                    let result = documents.get(uri).map(|source| {
+                        rename_node_at(source, position, new_name).map(|plan| {
+                            workspace_edit(
+                                uri,
+                                plan.edits
+                                    .into_iter()
+                                    .map(|edit| (edit.range, edit.new_text)),
+                            )
+                        })
+                    });
+                    match result {
+                        Some(Ok(edit)) => write_message(&mut writer, &response(id, edit))?,
+                        Some(Err(message)) => {
+                            write_message(&mut writer, &error_response(id, -32602, &message))?
+                        }
+                        None => write_message(
+                            &mut writer,
+                            &error_response(id, -32602, "document is not open"),
+                        )?,
+                    }
+                }
+            }
+            "textDocument/codeAction" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let diagnostics = diagnostics_from_code_action(&params);
+                    let result = documents
+                        .get(uri)
+                        .map(|source| {
+                            code_actions(source, &diagnostics)
+                                .into_iter()
+                                .map(|action| {
+                                    let edit = workspace_edit(
+                                        uri,
+                                        action
+                                            .edits
+                                            .into_iter()
+                                            .map(|edit| (edit.range, edit.new_text)),
+                                    );
+                                    json!({"title":action.title,"kind":action.kind,"edit":edit})
+                                })
+                                .collect::<Vec<_>>()
+                        })
+                        .unwrap_or_default();
+                    write_message(&mut writer, &response(id, Value::Array(result)))?;
+                }
+            }
             _ => {
                 if let Some(id) = id {
                     write_message(&mut writer, &error_response(id, -32601, "method not found"))?;
@@ -218,4 +388,35 @@ pub fn run_stdio() -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn incremental_changes_apply_sequentially_with_utf16_positions() {
+        let source = "scene \"Sync\" {\n  text title { content \"A😀B\"; }\n}\n";
+        let changes = vec![
+            json!({
+                "range": {"start":{"line":1,"character":25},"end":{"line":1,"character":27}},
+                "text":"X"
+            }),
+            json!({
+                "range": {"start":{"line":1,"character":26},"end":{"line":1,"character":27}},
+                "text":"Y"
+            }),
+        ];
+        let edited = apply_content_changes(source, &changes).unwrap();
+        assert!(edited.contains("\"AXY\""), "{edited}");
+    }
+
+    #[test]
+    fn full_document_change_still_replaces_buffer() {
+        let changes = vec![json!({"text":"scene \"New\" { canvas 10 10; }"})];
+        assert_eq!(
+            apply_content_changes("scene \"Old\" { canvas 1 1; }", &changes).unwrap(),
+            "scene \"New\" { canvas 10 10; }"
+        );
+    }
 }

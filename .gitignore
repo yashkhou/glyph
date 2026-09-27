@@ -1,5 +1,6 @@
 /target
 /studio/.build/
+/dist/
 
 # Generated benchmark/render outputs
 exports/

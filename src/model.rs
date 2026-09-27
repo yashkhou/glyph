@@ -477,6 +477,10 @@ pub struct ComponentDefinition {
     pub nodes: Vec<Node>,
 }
 
+fn default_animation_repeat() -> u32 {
+    1
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnimationSpec {
     pub target: PropertyRef,
@@ -489,6 +493,14 @@ pub struct AnimationSpec {
     pub to_unit: Option<Unit>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub duration_unit: Option<Unit>,
+    #[serde(default)]
+    pub delay: f64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub delay_unit: Option<Unit>,
+    #[serde(default = "default_animation_repeat")]
+    pub repeat: u32,
+    #[serde(default)]
+    pub alternate: bool,
     pub easing: String,
 }
 

@@ -810,10 +810,84 @@ fn parse_animation(pair: Pair<Rule>) -> Result<AnimationSpec> {
     if duration < 0.0 {
         return Err(anyhow!("animation duration must be nonnegative"));
     }
-    let easing = i
-        .next()
-        .map(|p| unquote(p.as_str()))
-        .unwrap_or_else(|| "linear".into());
+    let mut delay = 0.0;
+    let mut delay_unit = None;
+    let mut repeat = 1u32;
+    let mut alternate = false;
+    let mut easing = "linear".to_string();
+    let mut seen_delay = false;
+    let mut seen_easing = false;
+    let mut seen_repeat = false;
+    for option in i {
+        match option.as_rule() {
+            Rule::animation_delay => {
+                if seen_delay {
+                    return Err(anyhow!("animation declares delay more than once"));
+                }
+                seen_delay = true;
+                let scalar = option
+                    .into_inner()
+                    .next()
+                    .context("missing animation delay")?;
+                (delay, delay_unit) = parse_scalar(scalar)?;
+                if let Some(unit) = delay_unit
+                    && unit.dimension() != Dimension::Time
+                {
+                    return Err(anyhow!(
+                        "animation delay expects Time, got {:?} ({})",
+                        unit.dimension(),
+                        unit.suffix()
+                    ));
+                }
+                if delay < 0.0 {
+                    return Err(anyhow!("animation delay must be nonnegative"));
+                }
+            }
+            Rule::animation_easing => {
+                if seen_easing {
+                    return Err(anyhow!("animation declares easing more than once"));
+                }
+                seen_easing = true;
+                let value = option
+                    .into_inner()
+                    .next()
+                    .context("missing animation easing")?;
+                easing = unquote(value.as_str());
+                if !matches!(
+                    easing.as_str(),
+                    "linear"
+                        | "easeIn"
+                        | "easeOut"
+                        | "easeInOut"
+                        | "spring"
+                        | "springSoft"
+                        | "springSnappy"
+                ) {
+                    return Err(anyhow!("unsupported animation easing {easing:?}"));
+                }
+            }
+            Rule::animation_repeat => {
+                if seen_repeat {
+                    return Err(anyhow!("animation declares repeat more than once"));
+                }
+                seen_repeat = true;
+                let raw = option
+                    .into_inner()
+                    .next()
+                    .context("missing animation repeat")?;
+                let value: f64 = raw.as_str().parse()?;
+                if !value.is_finite() || value < 1.0 || value.fract().abs() > f64::EPSILON {
+                    return Err(anyhow!("animation repeat must be a positive integer"));
+                }
+                repeat = value as u32;
+                if repeat == 0 || repeat > 10_000 {
+                    return Err(anyhow!("animation repeat must be between 1 and 10000"));
+                }
+            }
+            Rule::animation_alternate => alternate = true,
+            _ => {}
+        }
+    }
     Ok(AnimationSpec {
         target,
         from,
@@ -822,6 +896,10 @@ fn parse_animation(pair: Pair<Rule>) -> Result<AnimationSpec> {
         from_unit,
         to_unit,
         duration_unit,
+        delay,
+        delay_unit,
+        repeat,
+        alternate,
         easing,
     })
 }

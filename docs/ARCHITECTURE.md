@@ -111,6 +111,14 @@ Studio drag is source-authoritative rather than a post-render coordinate patch. 
 
 Phase F direct-manipulation now includes text-frame resize, multi-edge handles, structural group membership/translation, compatible path translate-constraint inversion, and explicit component-owned affine path inversion. Remaining inverse-graphics work is intentionally narrower: rotated-path semantics and mixed/ambiguous component-constraint ownership still fail closed rather than guessing.
 
+## Motion runtime
+
+Motion remains source-authoritative and deterministic. Animation specs carry typed `s`/`ms` duration and delay, finite repeat counts, optional alternate playback and a bounded set of deterministic ease/spring presets. Sampling at a given time produces a resolved scene without rewriting authored source; negative/non-finite sample times and invalid repeat/easing declarations fail closed. These spring presets are deterministic interpolation functions, not a continuously integrated physics engine.
+
+## Vision / inverse graphics
+
+Image→Glyph keeps deterministic authored state separate from uncertain recognition. `glyph import-image` accepts `--mode structured|hybrid|auto`: structured mode emits editable text/shape reconstruction for high-confidence UI-like imagery; hybrid mode preserves the original image as a full-canvas raster node and keeps detected semantic objects as zero-opacity, assistive-hidden, confidence-bearing overlays. `auto` chooses between those bounded contracts deterministically from manifest density/confidence. The hybrid path preserves pixels instead of pretending ambiguous photographs or illustrations are clean vectors; arbitrary photo-to-clean-vector reconstruction remains a non-goal.
+
 ## Rendering
 
 Glyph does not contain a custom rasterizer. The resolved scene now lowers first into a deterministic **backend-neutral display list**. That list carries stable IDs, roles, resolved primitives, paint, bounds and source provenance plus a stable object map.
@@ -138,13 +146,23 @@ For real project files, diagnostics resolve the normal local import graph while 
 
 `glyph lsp` implements a stdio JSON-RPC Language Server Protocol service with initialize/shutdown/exit, UTF-16-safe incremental open/change/close synchronization, publishDiagnostics, completion, definition, references, prepare-rename/rename and quick-fix code actions. Definition/references/rename currently operate on document-scoped top-level node symbols; rename preserves stable `@id(...)` identity, updates supported semantic references, and excludes component/instance-local same-name scopes rather than guessing across ambiguous ownership. The first code-action contract is deliberately narrow: it can add a deterministic accessible name for the corresponding accessibility diagnostic. Cross-file symbol indexing/refactors, richer code actions, hovers/semantic tokens and other advanced editor projections remain future layers and must continue to reuse canonical compiler meaning rather than inventing editor-only semantics.
 
+### Project assets and bundles
+
+A `glyph.project.json` manifest can declare the canonical entry point plus named assets with required SHA-256 digests. `project-check` resolves the same bounded import graph used by compilation, rejects project-root escapes and mismatched entry declarations, hashes the transitive source closure, and verifies every declared asset before reporting success. `project-bundle` copies only that verified dependency closure into a staging directory, writes canonical `glyph.project.json` and `glyph.bundle.json` manifests, re-validates the staged project, then atomically publishes the bundle directory. Existing output paths are never overwritten.
+
+The public package-registry problem remains separate. Glyph now has deterministic local packaging and content-addressed assets without introducing remote dependency resolution, lockfile registries or npm-style package semantics prematurely.
+
+### Release hardening
+
+`tests/robustness.rs` applies a deterministic parser mutation corpus and malformed-edit fail-closed checks. `scripts/profile_core.sh` enforces bounded release-mode check/compile time for a 5,000-node synthetic scene; `scripts/security_check.sh` composes robustness, project-containment and asset-hash regressions plus `cargo-audit` when available; `scripts/package_release.sh` produces checksummed macOS CLI/Studio/Vision archives; and `scripts/verify_release.sh` runs the complete source, Studio, hardening, performance and packaging path.
+
 ## Commander API
 
 The v0.1 plugin exposes read and mutation operations separately:
 
 - discover: `capabilities`, `query`, `inspect`, `why`, `object-map`, `targets`, `drag-plan`, `resize-plan`, `constraints`;
-- validate: `check`, `test`, `conformance`;
-- mutate: `compile`, `apply`, `source-set`, `source-drag`, `source-resize`, `constraint-edit`, `constraint-remove`, `constraint-add`;
+- validate: `check`, `project-check`, `test`, `conformance`;
+- mutate/package: `compile`, `project-bundle`, `apply`, `source-set`, `source-drag`, `source-resize`, `constraint-edit`, `constraint-remove`, `constraint-add`;
 - compare: `diff`, `visual-diff`;
 - render/export: display-list JSON, SVG, PNG, PDF, CommanderDraw JSON.
 
@@ -160,11 +178,16 @@ Completed after the fixed effectiveness gate:
 
 1. Cassowary-class weighted linear solver, while retaining the original resolver as a legacy comparison path;
 2. reusable styles, components/instances and seeded deterministic repeat;
-3. declarative assertions, named states and sampled motion v1;
+3. declarative assertions, named states and deterministic sampled timeline motion with typed delay/repeat/alternate/ease/spring semantics;
 4. surgical `.glyph` source property round-trip editing;
 5. backend-neutral display list + object map now used by both SVG and CommanderDraw output;
 6. CoreText shaping, fallback/substitution diagnostics, ligature/spacing controls and validated variable-font axes;
 7. renderer conformance plus the target strategy contract, with production PDF export and fail-closed unsupported semantics;
-8. Phase F direct-manipulation v1: source-authoritative drag/resize planning, compatible multi-equality co-editing, inequality feasibility guards, affine path translation and unrotated path resize without rewriting `d`, rect/image/ellipse semantic resize, unambiguous typed component-parameter inverse editing, first-class constraint query/edit/add/remove with Studio badges and controls, native Studio handles, and validated source-snapshot undo/redo.
+8. Phase F direct-manipulation v1: source-authoritative drag/resize planning, compatible multi-equality co-editing, inequality feasibility guards, affine path translation and unrotated path resize without rewriting `d`, rect/image/ellipse/text-frame semantic resize, explicit multi-edge handles, structural groups, unambiguous typed component/path inverse editing, first-class constraint query/edit/add/remove with Studio badges and controls, and validated source-snapshot undo/redo;
+9. first-class accessibility semantics/auditing lowered through display-list, SVG and CommanderDraw metadata;
+10. production-linked diagnostics/completion plus UTF-16-safe incremental LSP navigation, rename and accessibility quick fixes;
+11. structured/hybrid/auto Vision import so ambiguous imagery preserves raster pixels instead of inventing vector certainty;
+12. content-addressed local project assets plus deterministic staged project bundles over the transitive source dependency closure;
+13. deterministic mutation robustness tests, 5,000-node performance budgets, containment/hash security gates and checksummed macOS release packaging.
 
-Remaining Phase F hardening is now concentrated on rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, cross-file/advanced language refactors beyond the implemented incremental navigation/rename/quick-fix LSP, assets/project packaging, fuzzing, performance/security/release work, and the still-gated SwiftUI/Web Canvas semantic emitters. Accessibility semantics/auditing and the production-linked language-service/LSP foundation are implemented.
+Remaining Phase F work is now concentrated on contracts that still require explicit product decisions rather than missing baseline infrastructure: rotated-path inverse resize, mixed/ambiguous component-constraint ownership, deeper Studio hierarchy/component operations, cross-file symbol indexing and advanced editor refactors, long-lived incremental solver sessions, cross-platform typography parity, and the still-gated SwiftUI/Web Canvas semantic emitters. Arbitrary photo-to-clean-vector reconstruction, a public remote package registry and learned aesthetic constraints as authority remain deliberate non-goals unless the product scope changes.

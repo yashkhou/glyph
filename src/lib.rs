@@ -50,7 +50,12 @@ pub use migration::{MigrationReport, load_gsir_str, migrate_gsir_value};
 pub use model::*;
 pub use parser::{parse_scene, parse_value_literal};
 pub use patch::{PatchOperation, TransactionResult, apply_transaction};
-pub use project::{discover_project_root, load_project_scene, load_project_scene_with_source};
+pub use project::{
+    ProjectAsset, ProjectAssetRecord, ProjectBundleManifest, ProjectFileRecord, ProjectManifest,
+    ProjectValidationReport, discover_project_root, load_project_scene,
+    load_project_scene_with_source, project_bundle_manifest, validate_project,
+    write_project_bundle, write_project_bundle_manifest,
+};
 pub use render::{render_svg, write_svg};
 pub use runtime::{AssertionResult, evaluate_assertions, sample_motion, scene_in_state};
 pub use solver::{SolveReport, solve_scene};

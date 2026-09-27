@@ -66,6 +66,8 @@ scene "Sakura Lake" @id("scene_sakura_lake") {
 ```bash
 glyph capabilities
 glyph check scene.glyph
+glyph project-check scene.glyph
+glyph project-bundle scene.glyph --output dist/scene.bundle
 glyph compile scene.glyph --output scene.gsir.json
 glyph query scene.gsir.json --role tree
 glyph inspect scene.gsir.json --node tree_right
@@ -80,6 +82,7 @@ glyph accessibility scene.glyph
 glyph diagnostics scene.glyph
 glyph complete scene.glyph 12 4
 glyph lsp
+glyph import-image reference.png --mode auto --output imported.glyph --manifest-output imported.vision.json
 glyph targets scene.v2.gsir.json
 glyph drag-plan scene.glyph card 12 -7
 glyph source-drag scene.glyph card 12 -7 --output scene.moved.glyph
@@ -120,10 +123,12 @@ The plugin executes the release binary at `target/release/glyph`. PNG and PDF de
 - authored constraints are first-class source edit targets: relation, strength and offset can be changed surgically; constraints can be removed or added; semantic reparsing rejects dimensionally invalid edits; Studio surfaces constraint badges and inspector controls instead of forcing raw-text surgery;
 - Studio semantic undo/redo restores validated source snapshots rather than canvas-only state; multi-selection can now create and remove structural groups through the same source-authoritative transaction path;
 - language tooling reuses the production parser/solver/accessibility contracts: diagnostics preserve parse locations, completions are context-aware, project files resolve local imports against unsaved entry overlays, and `glyph lsp` now exposes UTF-16-safe incremental sync, definition/references, fail-closed top-level node rename, accessibility quick fixes, diagnostics and completion over standard stdio JSON-RPC;
-- CoreText typography, bounded Vision import, sampled motion, and the native Studio are present as scoped v1 implementations.
+- CoreText typography, bounded Vision import, deterministic sampled timeline motion, and the native Studio are present as scoped v1 implementations; motion supports typed time units, delay, finite repeat, alternate playback and deterministic spring/ease presets, while Vision can auto-select structured reconstruction or a hybrid raster-preserving representation with confidence-bearing semantic overlays for ambiguous imagery;
+- project manifests can declare content-addressed assets by SHA-256; `project-check` verifies the full transitive source graph plus asset containment/hashes, and `project-bundle` publishes a self-contained dependency-closure directory with canonical project/bundle manifests only after re-validating the staged bundle;
+- `scripts/verify_release.sh` composes source/Studio gates, deterministic mutation robustness checks, containment/hash security regressions, a 5,000-node performance budget, and reproducible macOS release packaging with binary/archive checksums.
 
 ## Deliberately postponed
 
-Full arbitrary-photo reconstruction, rotated-path inverse resize, mixed component-constraint path ownership, semantic SwiftUI/Web Canvas code generation, learned aesthetic constraints as authority, a public package ecosystem, and a huge semantic ontology remain out of scope. Accessibility semantics/auditing, text-frame resize, multi-edge handles, structural group membership/translation, compatible path-constraint resize, and explicit component-owned affine path inversion are now implemented where the source contract is unambiguous.
+Arbitrary-photo-to-clean-vector reconstruction, rotated-path inverse resize, mixed component-constraint path ownership, semantic SwiftUI/Web Canvas code generation, learned aesthetic constraints as authority, a public package ecosystem, and a huge semantic ontology remain out of scope. Accessibility semantics/auditing, text-frame resize, multi-edge handles, structural group membership/translation, compatible path-constraint resize, and explicit component-owned affine path inversion are now implemented where the source contract is unambiguous.
 
 See `docs/ARCHITECTURE.md` and `docs/MVP.md`.

@@ -468,6 +468,84 @@ fn assertions_states_and_motion_execute() {
 }
 
 #[test]
+fn motion_timeline_supports_delay_repeat_alternate_and_units() {
+    let src = r##"scene "Timeline" {
+        canvas 400 200;
+        rect box @id("box") { x 20px; y 30px; width 80px; height 40px; }
+        animate box.x from 20px to 120px duration 500ms delay 250ms easing "linear" repeat 2 alternate;
+    }"##;
+    let scene = parse_scene(src, "timeline.glyph").unwrap();
+    let animation = &scene.animations[0];
+    assert_eq!(animation.delay, 0.25);
+    assert_eq!(animation.delay_unit, Some(glyph::Unit::Ms));
+    assert_eq!(animation.repeat, 2);
+    assert!(animation.alternate);
+
+    let before = glyph::sample_motion(&scene, 0.1).unwrap();
+    assert_eq!(before.nodes[0].derived.props["x"], 20.0);
+    let first_half = glyph::sample_motion(&scene, 0.5).unwrap();
+    assert_eq!(first_half.nodes[0].derived.props["x"], 70.0);
+    let turn = glyph::sample_motion(&scene, 0.75).unwrap();
+    assert_eq!(turn.nodes[0].derived.props["x"], 120.0);
+    let reverse_half = glyph::sample_motion(&scene, 1.0).unwrap();
+    assert_eq!(reverse_half.nodes[0].derived.props["x"], 70.0);
+    let end = glyph::sample_motion(&scene, 1.25).unwrap();
+    assert_eq!(end.nodes[0].derived.props["x"], 20.0);
+}
+
+#[test]
+fn motion_springs_are_deterministic_and_invalid_options_fail_closed() {
+    let src = r##"scene "Spring" {
+        canvas 300 160;
+        rect box @id("box") { x 10; y 20; width 50; height 40; }
+        animate box.x from 10 to 110 duration 1 easing "springSnappy";
+    }"##;
+    let scene = parse_scene(src, "spring.glyph").unwrap();
+    let first = glyph::sample_motion(&scene, 0.42).unwrap();
+    let second = glyph::sample_motion(&scene, 0.42).unwrap();
+    assert_eq!(
+        first.nodes[0].derived.props["x"].to_bits(),
+        second.nodes[0].derived.props["x"].to_bits()
+    );
+    assert_eq!(
+        glyph::sample_motion(&scene, 0.0).unwrap().nodes[0]
+            .derived
+            .props["x"],
+        10.0
+    );
+    assert_eq!(
+        glyph::sample_motion(&scene, 1.0).unwrap().nodes[0]
+            .derived
+            .props["x"],
+        110.0
+    );
+    assert!(
+        glyph::sample_motion(&scene, -0.1)
+            .unwrap_err()
+            .to_string()
+            .contains("nonnegative")
+    );
+
+    for (source, needle) in [
+        (
+            r#"scene "Bad" { canvas 100 100; rect x { x 0; y 0; width 10; height 10; } animate x.x from 0 to 10 duration 1 repeat 0; }"#,
+            "positive integer",
+        ),
+        (
+            r#"scene "Bad" { canvas 100 100; rect x { x 0; y 0; width 10; height 10; } animate x.x from 0 to 10 duration 1 delay -1s; }"#,
+            "delay must be nonnegative",
+        ),
+        (
+            r#"scene "Bad" { canvas 100 100; rect x { x 0; y 0; width 10; height 10; } animate x.x from 0 to 10 duration 1 easing "mystery"; }"#,
+            "unsupported animation easing",
+        ),
+    ] {
+        let err = parse_scene(source, "bad-motion.glyph").unwrap_err();
+        assert!(err.to_string().contains(needle), "{err}");
+    }
+}
+
+#[test]
 fn component_instance_ids_are_constraint_addressable() {
     let src = r##"scene "C" { canvas 400 300; component dot { ellipse e @id("e") { cx 0; cy 0; rx 10; ry 10; fill "#000"; } } instance dot first @id("first") { x 50; y 50; } constrain first/e.center_x == canvas.center_x @required; }"##;
     let mut scene = parse_scene(src, "c.glyph").unwrap();
@@ -844,6 +922,123 @@ fn vision_text_anchor_infers_center_only_inside_centered_region() {
 }
 
 #[test]
+fn vision_hybrid_import_preserves_raster_and_semantic_overlays() {
+    use glyph::vision::{
+        VisionBox, VisionImportMode, VisionManifest, VisionObservation, manifest_to_hybrid_glyph,
+    };
+    let manifest = VisionManifest {
+        schema_version: 1,
+        source: "/tmp/photo-reference.png".into(),
+        width: 800,
+        height: 600,
+        background: None,
+        observations: vec![VisionObservation {
+            kind: "text".into(),
+            text: Some("uncertain caption".into()),
+            bbox: VisionBox {
+                x: 60.0,
+                y: 500.0,
+                width: 180.0,
+                height: 28.0,
+            },
+            confidence: 0.58,
+            color: Some("#ffffff".into()),
+            corner_radius: None,
+            font_size: Some(24.0),
+            font_weight: Some("500".into()),
+            baseline_y: Some(522.0),
+        }],
+    };
+    let source = manifest_to_hybrid_glyph(&manifest).unwrap();
+    let scene = parse_scene(&source, "hybrid.glyph").unwrap();
+    assert_eq!(
+        scene.metadata["vision.reconstruction"],
+        "hybrid-raster-semantic-overlays"
+    );
+    let raster = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "vision_raster_base")
+        .unwrap();
+    assert_eq!(
+        raster.authored.props["src"].text(),
+        Some("/tmp/photo-reference.png")
+    );
+    assert_eq!(raster.authored.props["width"].number(), Some(800.0));
+    assert_eq!(raster.authored.props["height"].number(), Some(600.0));
+    let overlay = scene
+        .nodes
+        .iter()
+        .find(|node| node.id != "vision_raster_base")
+        .unwrap();
+    assert_eq!(overlay.authored.props["opacity"].number(), Some(0.0));
+    assert_eq!(overlay.authored.props["a11y_hidden"].text(), Some("true"));
+    assert_eq!(VisionImportMode::Hybrid.to_string(), "hybrid");
+}
+
+#[test]
+fn vision_auto_mode_distinguishes_structured_and_hybrid_inputs() {
+    use glyph::vision::{
+        VisionBox, VisionImportMode, VisionManifest, VisionObservation, choose_import_mode,
+        source_for_manifest,
+    };
+    let make =
+        |kind: &str, text: Option<&str>, x: f64, y: f64, confidence: f64| VisionObservation {
+            kind: kind.into(),
+            text: text.map(str::to_string),
+            bbox: VisionBox {
+                x,
+                y,
+                width: 100.0,
+                height: 30.0,
+            },
+            confidence,
+            color: None,
+            corner_radius: Some(4.0),
+            font_size: None,
+            font_weight: None,
+            baseline_y: None,
+        };
+    let structured = VisionManifest {
+        schema_version: 1,
+        source: "/tmp/ui.png".into(),
+        width: 400,
+        height: 300,
+        background: Some("#ffffff".into()),
+        observations: vec![
+            make("rectangle", None, 20.0, 20.0, 0.96),
+            make("text", Some("Title"), 40.0, 50.0, 0.98),
+            make("text", Some("Body"), 40.0, 90.0, 0.95),
+            make("rectangle", None, 20.0, 140.0, 0.93),
+        ],
+    };
+    assert_eq!(
+        choose_import_mode(&structured).unwrap(),
+        VisionImportMode::Structured
+    );
+    let (structured_source, mode) =
+        source_for_manifest(&structured, VisionImportMode::Auto).unwrap();
+    assert_eq!(mode, VisionImportMode::Structured);
+    assert!(!structured_source.contains("vision_raster_base"));
+
+    let sparse = VisionManifest {
+        schema_version: 1,
+        source: "/tmp/photo.png".into(),
+        width: 400,
+        height: 300,
+        background: None,
+        observations: vec![make("text", Some("maybe"), 20.0, 240.0, 0.55)],
+    };
+    assert_eq!(
+        choose_import_mode(&sparse).unwrap(),
+        VisionImportMode::Hybrid
+    );
+    let (hybrid_source, mode) = source_for_manifest(&sparse, VisionImportMode::Auto).unwrap();
+    assert_eq!(mode, VisionImportMode::Hybrid);
+    assert!(hybrid_source.contains("vision_raster_base"));
+}
+
+#[test]
 fn explicit_units_are_typed_preserved_and_canonicalized() {
     let src = r##"scene "Units" {
   canvas 400px 300px;
@@ -1169,6 +1364,100 @@ fn project_import_rejects_root_escape() {
     )
     .unwrap();
     let err = glyph::load_project_scene(&project.join("main.glyph")).unwrap_err();
+    assert!(
+        err.to_string().contains("escapes Glyph project root"),
+        "{err}"
+    );
+}
+
+#[test]
+fn project_manifest_validates_hashed_assets_and_builds_deterministic_bundle() {
+    use sha2::{Digest, Sha256};
+    use std::fs;
+    let dir = tempfile::tempdir().unwrap();
+    fs::create_dir_all(dir.path().join("lib")).unwrap();
+    fs::create_dir_all(dir.path().join("assets")).unwrap();
+    fs::write(
+        dir.path().join("lib/ui.glyph"),
+        r##"scene "UI" { canvas 10 10; style accent { fill "#123456"; } }"##,
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("main.glyph"),
+        r#"import "lib/ui.glyph" as ui; scene "Main" { canvas 100 80; rect box { x 0; y 0; width 10; height 10; } }"#,
+    )
+    .unwrap();
+    let asset = b"glyph-asset-v1";
+    fs::write(dir.path().join("assets/hero.bin"), asset).unwrap();
+    let digest = format!("{:x}", Sha256::digest(asset));
+    fs::write(
+        dir.path().join("glyph.project.json"),
+        format!(
+            "{{\"version\":1,\"entry\":\"main.glyph\",\"assets\":{{\"hero\":{{\"path\":\"assets/hero.bin\",\"sha256\":\"{digest}\"}}}}}}"
+        ),
+    )
+    .unwrap();
+
+    let report = glyph::validate_project(&dir.path().join("main.glyph")).unwrap();
+    assert_eq!(report.sources.len(), 2);
+    assert_eq!(report.assets.len(), 1);
+    assert_eq!(report.assets[0].name, "hero");
+    assert_eq!(report.assets[0].sha256, digest);
+
+    let a = glyph::project_bundle_manifest(&dir.path().join("main.glyph")).unwrap();
+    let b = glyph::project_bundle_manifest(&dir.path().join("main.glyph")).unwrap();
+    assert_eq!(
+        serde_json::to_vec(&a).unwrap(),
+        serde_json::to_vec(&b).unwrap()
+    );
+    assert_eq!(a.root, ".");
+    assert_eq!(a.entry, "main.glyph");
+
+    let bundle_a = dir.path().join("bundle-a");
+    let bundle_b = dir.path().join("bundle-b");
+    glyph::write_project_bundle(&dir.path().join("main.glyph"), &bundle_a).unwrap();
+    glyph::write_project_bundle(&dir.path().join("main.glyph"), &bundle_b).unwrap();
+    assert!(bundle_a.join("main.glyph").is_file());
+    assert!(bundle_a.join("lib/ui.glyph").is_file());
+    assert_eq!(fs::read(bundle_a.join("assets/hero.bin")).unwrap(), asset);
+    assert_eq!(
+        fs::read(bundle_a.join("glyph.bundle.json")).unwrap(),
+        fs::read(bundle_b.join("glyph.bundle.json")).unwrap()
+    );
+    let bundled = glyph::validate_project(&bundle_a.join("main.glyph")).unwrap();
+    assert_eq!(bundled.sources.len(), 2);
+    assert_eq!(bundled.assets[0].sha256, digest);
+    let err = glyph::write_project_bundle(&dir.path().join("main.glyph"), &bundle_a).unwrap_err();
+    assert!(err.to_string().contains("already exists"), "{err}");
+}
+
+#[test]
+fn project_assets_fail_closed_on_hash_mismatch_and_root_escape() {
+    use std::fs;
+    let outer = tempfile::tempdir().unwrap();
+    let project = outer.path().join("project");
+    fs::create_dir_all(project.join("assets")).unwrap();
+    fs::write(
+        project.join("main.glyph"),
+        r#"scene "Main" { canvas 10 10; }"#,
+    )
+    .unwrap();
+    fs::write(project.join("assets/a.bin"), b"actual").unwrap();
+    fs::write(
+        project.join("glyph.project.json"),
+        r#"{"version":1,"entry":"main.glyph","assets":{"a":{"path":"assets/a.bin","sha256":"0000000000000000000000000000000000000000000000000000000000000000"}}}"#,
+    )
+    .unwrap();
+    let err = glyph::validate_project(&project.join("main.glyph")).unwrap_err();
+    assert!(err.to_string().contains("hash mismatch"), "{err}");
+
+    fs::write(outer.path().join("outside.bin"), b"outside").unwrap();
+    fs::write(
+        project.join("glyph.project.json"),
+        r#"{"version":1,"entry":"main.glyph","assets":{"outside":{"path":"../outside.bin","sha256":"d9298a10d1b0735837dc4bd85dac641b0f6e8e66b74f0f0dabeec0131db9a999"}}}"#,
+    )
+    .unwrap();
+    let err = glyph::validate_project(&project.join("main.glyph")).unwrap_err();
     assert!(
         err.to_string().contains("escapes Glyph project root"),
         "{err}"

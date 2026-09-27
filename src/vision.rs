@@ -44,14 +44,50 @@ pub struct VisionManifest {
     pub background: Option<String>,
     pub observations: Vec<VisionObservation>,
 }
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum VisionImportMode {
+    Structured,
+    Hybrid,
+    Auto,
+}
+
+impl std::fmt::Display for VisionImportMode {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(match self {
+            Self::Structured => "structured",
+            Self::Hybrid => "hybrid",
+            Self::Auto => "auto",
+        })
+    }
+}
+
+impl std::str::FromStr for VisionImportMode {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "structured" => Ok(Self::Structured),
+            "hybrid" => Ok(Self::Hybrid),
+            "auto" => Ok(Self::Auto),
+            _ => Err(format!(
+                "unknown Vision import mode {value:?}; expected structured, hybrid, or auto"
+            )),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct VisionImportSummary {
     pub source: String,
     pub output: String,
     pub width: u32,
     pub height: u32,
+    pub mode: VisionImportMode,
     pub text_nodes: usize,
     pub region_nodes: usize,
+    pub raster_nodes: usize,
+    pub semantic_overlays: usize,
 }
 
 pub fn default_vision_helper() -> PathBuf {
@@ -238,6 +274,36 @@ fn inferred_text_anchor(
     (observation.bbox.x, "start")
 }
 
+pub fn choose_import_mode(manifest: &VisionManifest) -> Result<VisionImportMode> {
+    validate_manifest(manifest)?;
+    if manifest.observations.is_empty() {
+        return Ok(VisionImportMode::Hybrid);
+    }
+    let region_count = manifest
+        .observations
+        .iter()
+        .filter(|observation| observation.kind != "text")
+        .count();
+    let text_count = manifest
+        .observations
+        .iter()
+        .filter(|observation| observation.kind == "text")
+        .count();
+    let mean_confidence = manifest
+        .observations
+        .iter()
+        .map(|observation| observation.confidence)
+        .sum::<f64>()
+        / manifest.observations.len() as f64;
+    let structured = mean_confidence >= 0.78
+        && (manifest.observations.len() >= 4 || (region_count >= 1 && text_count >= 2));
+    Ok(if structured {
+        VisionImportMode::Structured
+    } else {
+        VisionImportMode::Hybrid
+    })
+}
+
 pub fn manifest_to_glyph(manifest: &VisionManifest) -> Result<String> {
     validate_manifest(manifest)?;
     let slug = scene_slug(&manifest.source);
@@ -364,6 +430,59 @@ pub fn manifest_to_glyph(manifest: &VisionManifest) -> Result<String> {
     Ok(out)
 }
 
+pub fn manifest_to_hybrid_glyph(manifest: &VisionManifest) -> Result<String> {
+    validate_manifest(manifest)?;
+    let mut out = manifest_to_glyph(manifest)?;
+    let parsed = parse_scene(&out, "<vision-hybrid-base>")?;
+    for node in parsed.nodes {
+        out = crate::source_edit::set_source_property(
+            &out,
+            &node.id,
+            "opacity",
+            crate::model::Value::Number(0.0),
+        )?;
+        out = crate::source_edit::set_source_property(
+            &out,
+            &node.id,
+            "a11y_hidden",
+            crate::model::Value::Text("true".into()),
+        )?;
+    }
+    out = out.replace(
+        "meta \"vision.reconstruction\" \"bounded-ocr-and-rectangles\";",
+        "meta \"vision.reconstruction\" \"hybrid-raster-semantic-overlays\";\n  meta \"vision.hybrid.overlay_policy\" \"non-rendering-confidence-bearing\";",
+    );
+    let close = out
+        .rfind('}')
+        .ok_or_else(|| anyhow!("generated Vision source has no scene closing brace"))?;
+    let raster = format!(
+        "  image vision_raster_base @id(\"vision_raster_base\") {{\n    role \"vision\" \"hybrid-raster\" \"reference\";\n    confidence semantics 0.1 geometry 1 depth unknown;\n    x 0; y 0; width {}; height {};\n    src \"{}\"; fit \"fill\";\n    a11y_hidden \"true\";\n  }}\n\n",
+        manifest.width,
+        manifest.height,
+        escape_string(&manifest.source)
+    );
+    out.insert_str(close, &raster);
+    parse_scene(&out, "<vision-hybrid-import>")
+        .context("generated hybrid Vision import did not parse as Glyph")?;
+    Ok(out)
+}
+
+pub fn source_for_manifest(
+    manifest: &VisionManifest,
+    requested_mode: VisionImportMode,
+) -> Result<(String, VisionImportMode)> {
+    let mode = match requested_mode {
+        VisionImportMode::Auto => choose_import_mode(manifest)?,
+        explicit => explicit,
+    };
+    let source = match mode {
+        VisionImportMode::Structured => manifest_to_glyph(manifest)?,
+        VisionImportMode::Hybrid => manifest_to_hybrid_glyph(manifest)?,
+        VisionImportMode::Auto => unreachable!("auto mode resolved above"),
+    };
+    Ok((source, mode))
+}
+
 pub fn run_vision_helper(image: &Path, helper: &Path) -> Result<VisionManifest> {
     let output = Command::new(helper)
         .arg(image)
@@ -379,14 +498,15 @@ pub fn run_vision_helper(image: &Path, helper: &Path) -> Result<VisionManifest> 
     Ok(manifest)
 }
 
-pub fn import_image_to_glyph(
+pub fn import_image_to_glyph_with_mode(
     image: &Path,
     output: &Path,
     helper: &Path,
     manifest_output: Option<&Path>,
+    requested_mode: VisionImportMode,
 ) -> Result<VisionImportSummary> {
     let manifest = run_vision_helper(image, helper)?;
-    let source = manifest_to_glyph(&manifest)?;
+    let (source, mode) = source_for_manifest(&manifest, requested_mode)?;
     fs::write(output, source)
         .with_context(|| format!("write imported Glyph source {}", output.display()))?;
     if let Some(path) = manifest_output {
@@ -403,12 +523,31 @@ pub fn import_image_to_glyph(
         .iter()
         .filter(|o| o.kind != "text")
         .count();
+    let hybrid = mode == VisionImportMode::Hybrid;
     Ok(VisionImportSummary {
         source: manifest.source,
         output: output.display().to_string(),
         width: manifest.width,
         height: manifest.height,
+        mode,
         text_nodes,
         region_nodes,
+        raster_nodes: usize::from(hybrid),
+        semantic_overlays: if hybrid { text_nodes + region_nodes } else { 0 },
     })
+}
+
+pub fn import_image_to_glyph(
+    image: &Path,
+    output: &Path,
+    helper: &Path,
+    manifest_output: Option<&Path>,
+) -> Result<VisionImportSummary> {
+    import_image_to_glyph_with_mode(
+        image,
+        output,
+        helper,
+        manifest_output,
+        VisionImportMode::Auto,
+    )
 }

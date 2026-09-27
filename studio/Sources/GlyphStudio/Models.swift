@@ -139,6 +139,7 @@ struct DirectManipulationPlan: Decodable {
     let allowed: Bool
     let constraintEdits: [ConstraintOffsetEdit]
     let instanceParameterEdits: [ComponentParameterEdit]
+    let memberPlans: [DirectManipulationPlan]?
     let blocked: [ManipulationBlock]
     let note: String
 
@@ -146,6 +147,7 @@ struct DirectManipulationPlan: Decodable {
         case nodeId = "node_id"
         case constraintEdits = "constraint_edits"
         case instanceParameterEdits = "instance_parameter_edits"
+        case memberPlans = "member_plans"
         case dx, dy, allowed, blocked, note
     }
 }
@@ -213,6 +215,27 @@ struct DirectResizePlan: Decodable {
         case constraintEdits = "constraint_edits"
         case instanceParameterEdits = "instance_parameter_edits"
         case dw, dh, allowed, blocked, note
+    }
+}
+
+struct DirectHandleResizePlan: Decodable {
+    let nodeId: String
+    let handle: String
+    let dx: Double
+    let dy: Double
+    let targetBounds: [Double]
+    let allowed: Bool
+    let resizePlan: DirectResizePlan?
+    let movementPlan: DirectManipulationPlan?
+    let blocked: [ManipulationBlock]
+    let note: String
+
+    enum CodingKeys: String, CodingKey {
+        case nodeId = "node_id"
+        case targetBounds = "target_bounds"
+        case resizePlan = "resize_plan"
+        case movementPlan = "movement_plan"
+        case handle, dx, dy, allowed, blocked, note
     }
 }
 

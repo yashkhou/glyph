@@ -18,6 +18,7 @@ final class GlyphDocumentModel: ObservableObject {
     @Published var canRedo = false
     @Published var lastManipulationPlan: DirectManipulationPlan?
     @Published var lastResizePlan: DirectResizePlan?
+    @Published var lastHandleResizePlan: DirectHandleResizePlan?
     @Published var constraints: [ConstraintRecord] = []
     @Published var selectedConstraintID: String?
 
@@ -93,6 +94,7 @@ final class GlyphDocumentModel: ObservableObject {
             lastVisualDiff = nil
             lastManipulationPlan = nil
             lastResizePlan = nil
+            lastHandleResizePlan = nil
             undoStack.removeAll()
             redoStack.removeAll()
             updateHistoryState()
@@ -122,6 +124,7 @@ final class GlyphDocumentModel: ObservableObject {
             isDirty = false
             lastManipulationPlan = nil
             lastResizePlan = nil
+            lastHandleResizePlan = nil
             try refreshRuntime()
         } catch {
             self.error = error.localizedDescription
@@ -168,6 +171,7 @@ final class GlyphDocumentModel: ObservableObject {
             updateVisualDiff(beforeURL: beforeURL, afterURL: url)
             lastManipulationPlan = nil
             lastResizePlan = nil
+            lastHandleResizePlan = nil
             selectedID = node
             status = "Patched \(node).\(property)"
         } catch {
@@ -234,6 +238,7 @@ final class GlyphDocumentModel: ObservableObject {
             let plan = try JSONDecoder().decode(DirectManipulationPlan.self, from: Data(planText.utf8))
             lastManipulationPlan = plan
             lastResizePlan = nil
+            lastHandleResizePlan = nil
             guard plan.allowed else {
                 let ids = plan.blocked.flatMap(\.constraintIds).joined(separator: ", ")
                 status = ids.isEmpty ? plan.note : "Drag blocked · \(ids)"
@@ -270,6 +275,7 @@ final class GlyphDocumentModel: ObservableObject {
             let planText = try runGlyph(["resize-plan", beforeURL.path, node, String(dw), String(dh)])
             let plan = try JSONDecoder().decode(DirectResizePlan.self, from: Data(planText.utf8))
             lastResizePlan = plan
+            lastHandleResizePlan = nil
             lastManipulationPlan = nil
             guard plan.allowed else {
                 let ids = plan.blocked.flatMap(\.constraintIds).joined(separator: ", ")
@@ -285,6 +291,49 @@ final class GlyphDocumentModel: ObservableObject {
             updateVisualDiff(beforeURL: beforeURL, afterURL: url)
             selectedID = node
             status = String(format: "Resized %@ · Δ %.1f × %.1f", node, dw, dh)
+        } catch {
+            self.error = error.localizedDescription
+            status = "Resize rejected"
+        }
+        try? FileManager.default.removeItem(at: temporary)
+        try? FileManager.default.removeItem(at: beforeURL)
+    }
+
+    func resize(node: String, handle: String, dx: Double, dy: Double) {
+        guard let url = sourceURL else { return }
+        guard !isDirty else {
+            status = "Save source edits before resizing"
+            return
+        }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-resize-handle-\(UUID().uuidString).glyph")
+        do {
+            try sourceText.write(to: beforeURL, atomically: true, encoding: .utf8)
+            let planText = try runGlyph([
+                "resize-handle-plan", beforeURL.path, node, handle, String(dx), String(dy),
+            ])
+            let plan = try JSONDecoder().decode(DirectHandleResizePlan.self, from: Data(planText.utf8))
+            lastHandleResizePlan = plan
+            lastResizePlan = plan.resizePlan
+            lastManipulationPlan = plan.movementPlan
+            guard plan.allowed else {
+                let ids = plan.blocked.flatMap(\.constraintIds).joined(separator: ", ")
+                status = ids.isEmpty ? plan.note : "Resize blocked · \(ids)"
+                try? FileManager.default.removeItem(at: beforeURL)
+                return
+            }
+            _ = try runGlyph([
+                "source-resize-handle", beforeURL.path, node, handle, String(dx), String(dy),
+                "--output", temporary.path,
+            ])
+            _ = try runGlyph(["check", temporary.path])
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(sourceText)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            selectedID = node
+            status = String(format: "Resized %@ from %@ · Δ %.1f, %.1f", node, handle, dx, dy)
         } catch {
             self.error = error.localizedDescription
             status = "Resize rejected"
@@ -357,6 +406,7 @@ final class GlyphDocumentModel: ObservableObject {
             self.selectedConstraintID = selectedConstraintID
             lastManipulationPlan = nil
             lastResizePlan = nil
+            lastHandleResizePlan = nil
             status = statusLabel
         } catch {
             self.error = error.localizedDescription
@@ -413,6 +463,7 @@ final class GlyphDocumentModel: ObservableObject {
         updateVisualDiff(beforeURL: beforeURL, afterURL: url)
         lastManipulationPlan = nil
         lastResizePlan = nil
+            lastHandleResizePlan = nil
         status = label
     }
 

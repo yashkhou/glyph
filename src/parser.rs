@@ -3,7 +3,7 @@ use anyhow::{Context, Result, anyhow};
 use pest::Parser;
 use pest::iterators::Pair;
 use pest_derive::Parser;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Parser)]
 #[grammar = "glyph.pest"]
@@ -348,6 +348,7 @@ fn parse_node(
         .to_string();
     let mut id = name.clone();
     let mut roles = Vec::new();
+    let mut members = Vec::new();
     let mut props = BTreeMap::new();
     let mut style_names = Vec::new();
     let mut confidence = None;
@@ -374,6 +375,15 @@ fn parse_node(
                     .to_string(),
             ),
             Rule::confidence => confidence = Some(parse_confidence(item)?),
+            Rule::group_member => {
+                members.push(
+                    item.into_inner()
+                        .next()
+                        .context("missing group member")?
+                        .as_str()
+                        .to_string(),
+                );
+            }
             Rule::prop => {
                 let (k, v) = parse_prop(item)?;
                 props.insert(k, v);
@@ -395,11 +405,15 @@ fn parse_node(
     for (k, v) in explicit {
         props.insert(k, v);
     }
+    if kind != NodeKind::Group && !members.is_empty() {
+        return Err(anyhow!("only group nodes may declare member entries"));
+    }
     Ok(Node {
         id,
         name,
         kind,
         roles,
+        members,
         authored: AuthoredNode { props },
         derived: DerivedNode::default(),
         provenance: Provenance {
@@ -518,6 +532,102 @@ fn apply_local_value(nodes: &mut [Node], target: &PropertyRef, value: &Value) ->
     Ok(())
 }
 
+fn resolve_group_members(nodes: &mut [Node]) -> Result<()> {
+    let identities = nodes
+        .iter()
+        .map(|node| (node.id.clone(), node.name.clone()))
+        .collect::<Vec<_>>();
+    for index in 0..nodes.len() {
+        if nodes[index].kind != NodeKind::Group {
+            continue;
+        }
+        let group_id = nodes[index].id.clone();
+        let requested = nodes[index].members.clone();
+        let mut resolved = Vec::new();
+        for reference in requested {
+            let matches = identities
+                .iter()
+                .filter(|(id, name)| id == &reference || name == &reference)
+                .map(|(id, _)| id.clone())
+                .collect::<Vec<_>>();
+            if matches.is_empty() {
+                return Err(anyhow!(
+                    "group {group_id} references missing member {reference}"
+                ));
+            }
+            if matches.len() > 1 {
+                return Err(anyhow!(
+                    "group {group_id} member reference {reference} is ambiguous"
+                ));
+            }
+            let member = matches[0].clone();
+            if member == group_id {
+                return Err(anyhow!("group {group_id} cannot contain itself"));
+            }
+            if resolved.contains(&member) {
+                return Err(anyhow!(
+                    "group {group_id} declares duplicate member {member}"
+                ));
+            }
+            resolved.push(member);
+        }
+        nodes[index].members = resolved;
+    }
+
+    let mut owner = BTreeMap::<String, String>::new();
+    for group in nodes.iter().filter(|node| node.kind == NodeKind::Group) {
+        for member in &group.members {
+            if let Some(previous) = owner.insert(member.clone(), group.id.clone()) {
+                return Err(anyhow!(
+                    "node {member} belongs to multiple groups ({previous}, {})",
+                    group.id
+                ));
+            }
+        }
+    }
+
+    fn visit(
+        id: &str,
+        nodes: &[Node],
+        visiting: &mut Vec<String>,
+        done: &mut BTreeSet<String>,
+    ) -> Result<()> {
+        if done.contains(id) {
+            return Ok(());
+        }
+        if let Some(position) = visiting.iter().position(|entry| entry == id) {
+            let mut cycle = visiting[position..].to_vec();
+            cycle.push(id.to_string());
+            return Err(anyhow!("group membership cycle: {}", cycle.join(" -> ")));
+        }
+        let Some(node) = nodes.iter().find(|node| node.id == id) else {
+            return Ok(());
+        };
+        if node.kind != NodeKind::Group {
+            done.insert(id.to_string());
+            return Ok(());
+        }
+        visiting.push(id.to_string());
+        for member in &node.members {
+            visit(member, nodes, visiting, done)?;
+        }
+        visiting.pop();
+        done.insert(id.to_string());
+        Ok(())
+    }
+
+    let group_ids = nodes
+        .iter()
+        .filter(|node| node.kind == NodeKind::Group)
+        .map(|node| node.id.clone())
+        .collect::<Vec<_>>();
+    let mut done = BTreeSet::new();
+    for group_id in group_ids {
+        visit(&group_id, nodes, &mut Vec::new(), &mut done)?;
+    }
+    Ok(())
+}
+
 fn parse_component_definition(
     pair: Pair<Rule>,
     source: &str,
@@ -542,6 +652,7 @@ fn parse_component_definition(
             _ => {}
         }
     }
+    resolve_group_members(&mut nodes)?;
     for i in 0..nodes.len() {
         for j in i + 1..nodes.len() {
             let a = &nodes[i];
@@ -731,12 +842,66 @@ fn parse_state(pair: Pair<Rule>) -> Result<SceneState> {
 }
 
 fn scale_translate(node: &mut Node, ox: f64, oy: f64, scale: f64) {
+    fn number(node: &Node, key: &str, default: f64) -> f64 {
+        node.authored
+            .props
+            .get(key)
+            .and_then(Value::number)
+            .unwrap_or(default)
+    }
+    fn set_number(node: &mut Node, key: &str, value: f64) {
+        match node.authored.props.get_mut(key) {
+            Some(Value::Number(number)) => *number = value,
+            Some(Value::Quantity(quantity)) => quantity.value = value,
+            Some(Value::Text(_)) => {}
+            None => {
+                node.authored.props.insert(key.into(), Value::Number(value));
+            }
+        }
+    }
+
+    if node.kind == NodeKind::Path {
+        let origin_x = number(node, "origin_x", 0.0);
+        let origin_y = number(node, "origin_y", 0.0);
+        let local_scale = number(node, "scale", 1.0);
+        let local_scale_x = node.authored.props.get("scale_x").and_then(Value::number);
+        let local_scale_y = node.authored.props.get("scale_y").and_then(Value::number);
+        let local_translate_x = number(node, "translate_x", 0.0);
+        let local_translate_y = number(node, "translate_y", 0.0);
+
+        set_number(node, "scale", local_scale * scale);
+        if let Some(value) = local_scale_x {
+            set_number(node, "scale_x", value * scale);
+        }
+        if let Some(value) = local_scale_y {
+            set_number(node, "scale_y", value * scale);
+        }
+        set_number(
+            node,
+            "translate_x",
+            ox + local_translate_x * scale + (scale - 1.0) * origin_x,
+        );
+        set_number(
+            node,
+            "translate_y",
+            oy + local_translate_y * scale + (scale - 1.0) * origin_y,
+        );
+        if let Some(stroke_width) = node
+            .authored
+            .props
+            .get("stroke_width")
+            .and_then(Value::number)
+        {
+            set_number(node, "stroke_width", stroke_width * scale);
+        }
+        return;
+    }
+
     for (key, val) in node.authored.props.iter_mut() {
         let transform = |base: f64| match key.as_str() {
             "x" | "cx" => base * scale + ox,
             "y" | "cy" => base * scale + oy,
-            "width" | "height" | "rx" | "ry" | "size" | "max_width" | "line_height"
-            | "stroke_width" => base * scale,
+            _ if property_dimension(key) == Some(Dimension::Length) => base * scale,
             _ => base,
         };
         match val {
@@ -896,6 +1061,11 @@ fn instantiate(
         let mut n = template.clone();
         n.id = format!("{instance_id}/{}", template.id);
         n.name = format!("{instance_name}/{}", template.name);
+        n.members = template
+            .members
+            .iter()
+            .map(|member| format!("{instance_id}/{member}"))
+            .collect();
         n.roles.extend([
             "component-instance".into(),
             format!("component:{component}"),
@@ -1395,6 +1565,7 @@ pub(crate) fn parse_scene_with_environment(
             _ => {}
         }
     }
+    resolve_group_members(&mut nodes)?;
     validate_scene_references(&nodes, &paints)?;
     metadata
         .entry("engine".into())

@@ -25,12 +25,26 @@ pub struct DisplayItem {
     pub name: String,
     pub roles: Vec<String>,
     pub bounds: Option<[f64; 4]>,
+    #[serde(default)]
+    pub accessibility: DisplayAccessibility,
     pub primitive: DisplayPrimitive,
     pub style: DisplayStyle,
     pub transform: DisplayTransform,
     pub clip: Option<String>,
     pub mask: Option<String>,
     pub definition_only: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct DisplayAccessibility {
+    pub label: Option<String>,
+    pub role: Option<String>,
+    pub hint: Option<String>,
+    pub labelled_by: Option<String>,
+    pub live: Option<String>,
+    pub hidden: bool,
+    pub interactive: bool,
+    pub reading_order: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -51,6 +65,8 @@ pub struct ObjectRecord {
     pub kind: String,
     pub roles: Vec<String>,
     pub bounds: Option<[f64; 4]>,
+    #[serde(default)]
+    pub accessibility: DisplayAccessibility,
     pub provenance: Provenance,
 }
 
@@ -139,6 +155,25 @@ fn txt(node: &Node, key: &str) -> Option<String> {
         .get(key)
         .and_then(Value::text)
         .map(ToOwned::to_owned)
+}
+
+fn accessibility(node: &Node) -> DisplayAccessibility {
+    let flag = |key: &str| txt(node, key).is_some_and(|value| value == "true");
+    DisplayAccessibility {
+        label: txt(node, "a11y_label"),
+        role: txt(node, "a11y_role"),
+        hint: txt(node, "a11y_hint"),
+        labelled_by: txt(node, "a11y_labelled_by"),
+        live: txt(node, "a11y_live"),
+        hidden: flag("a11y_hidden"),
+        interactive: flag("interactive"),
+        reading_order: node
+            .authored
+            .props
+            .get("reading_order")
+            .and_then(Value::number)
+            .map(|value| value as u64),
+    }
 }
 
 fn style(node: &Node, scene: &Scene) -> DisplayStyle {
@@ -244,12 +279,14 @@ pub fn build_display_list(scene: &Scene) -> DisplayList {
     let mut items = Vec::with_capacity(scene.nodes.len());
     let mut object_map = BTreeMap::new();
     for (index, node) in scene.nodes.iter().enumerate() {
-        let bounds = query::bounds(node);
+        let bounds = query::bounds_in_scene(scene, node);
+        let accessibility = accessibility(node);
         items.push(DisplayItem {
             id: node.id.clone(),
             name: node.name.clone(),
             roles: node.roles.clone(),
             bounds,
+            accessibility: accessibility.clone(),
             primitive: primitive(node),
             style: style(node, scene),
             transform: transform(node),
@@ -265,6 +302,7 @@ pub fn build_display_list(scene: &Scene) -> DisplayList {
                 kind: format!("{:?}", node.kind).to_lowercase(),
                 roles: node.roles.clone(),
                 bounds,
+                accessibility,
                 provenance: node.provenance.clone(),
             },
         );

@@ -1,7 +1,4 @@
-use crate::{
-    model::{Constraint, Node, Scene, Value},
-    text_layout::text_left,
-};
+use crate::model::{Constraint, Node, Scene, Value};
 use kurbo::{BezPath, Shape};
 use serde::{Deserialize, Serialize};
 
@@ -38,10 +35,26 @@ fn base_bounds(node: &Node) -> Option<[f64; 4]> {
             Some([cx - rx, cy - ry, rx * 2.0, ry * 2.0])
         }
         crate::model::NodeKind::Text => {
+            let x = n(node, "x")?;
             let y = n(node, "y")?;
             let h = n(node, "height")?;
             let ascent = n(node, "ascent").unwrap_or(0.0);
-            Some([text_left(node), y - ascent, n(node, "width")?, h])
+            let ink_width = n(node, "width")?;
+            let frame_width = n(node, "max_width")
+                .filter(|width| width.is_finite() && *width > 0.0)
+                .unwrap_or(ink_width);
+            let align = node
+                .authored
+                .props
+                .get("align")
+                .and_then(Value::text)
+                .unwrap_or("start");
+            let left = match align {
+                "center" => x - frame_width / 2.0,
+                "right" => x - frame_width,
+                _ => x,
+            };
+            Some([left, y - ascent, frame_width, h])
         }
         crate::model::NodeKind::Path => {
             let d = node.authored.props.get("d").and_then(Value::text)?;
@@ -97,6 +110,31 @@ pub fn bounds(node: &Node) -> Option<[f64; 4]> {
     Some(transformed_bounds(node, base_bounds(node)?))
 }
 
+pub fn bounds_in_scene(scene: &Scene, node: &Node) -> Option<[f64; 4]> {
+    if node.kind != crate::model::NodeKind::Group {
+        return bounds(node);
+    }
+    let mut union: Option<[f64; 4]> = None;
+    for member_id in &node.members {
+        let member = scene
+            .nodes
+            .iter()
+            .find(|candidate| candidate.id == *member_id)?;
+        let [x, y, width, height] = bounds_in_scene(scene, member)?;
+        union = Some(match union {
+            None => [x, y, width, height],
+            Some([ux, uy, uw, uh]) => {
+                let left = ux.min(x);
+                let top = uy.min(y);
+                let right = (ux + uw).max(x + width);
+                let bottom = (uy + uh).max(y + height);
+                [left, top, right - left, bottom - top]
+            }
+        });
+    }
+    union
+}
+
 pub fn by_role(scene: &Scene, role: &str) -> Vec<NodeSummary> {
     scene
         .nodes
@@ -107,7 +145,7 @@ pub fn by_role(scene: &Scene, role: &str) -> Vec<NodeSummary> {
             name: n.name.clone(),
             kind: format!("{:?}", n.kind).to_lowercase(),
             roles: n.roles.clone(),
-            bounds: bounds(n),
+            bounds: bounds_in_scene(scene, n),
         })
         .collect()
 }

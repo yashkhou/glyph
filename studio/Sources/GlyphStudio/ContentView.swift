@@ -1,11 +1,21 @@
 import Combine
 import SwiftUI
 
+private struct ResizeHandleSpec: Identifiable {
+    let id: String
+    let xFactor: Double
+    let yFactor: Double
+    let horizontal: Bool
+    let vertical: Bool
+}
+
 struct ContentView: View {
     @StateObject var model: GlyphDocumentModel
     @State private var patchProperty = ""
     @State private var patchValue = ""
     @State private var resizePreview = CGSize.zero
+    @State private var activeResizeHandle: String?
+    @State private var groupDragPreview = CGSize.zero
     @State private var newConstraintLHS = ""
     @State private var newConstraintRHS = ""
     @State private var newConstraintOffset = ""
@@ -140,6 +150,8 @@ struct ContentView: View {
                             patchProperty = ""
                             patchValue = ""
                             resizePreview = .zero
+                            activeResizeHandle = nil
+                            groupDragPreview = .zero
                         },
                         onDrag: { id, dx, dy in
                             model.drag(node: id, dx: dx, dy: dy)
@@ -147,6 +159,7 @@ struct ContentView: View {
                     )
                     .padding(22)
                     .overlay { semanticConstraintOverlay }
+                    .overlay { semanticGroupDragOverlay }
                     .overlay { semanticResizeOverlay }
                 }
             }
@@ -192,13 +205,77 @@ struct ContentView: View {
     }
 
     @ViewBuilder
+    private var semanticGroupDragOverlay: some View {
+        GeometryReader { proxy in
+            if let scene = model.displayList,
+               let item = model.selectedItem,
+               item.primitive.kind == "group",
+               let bounds = item.bounds,
+               bounds.count == 4 {
+                let innerWidth = max(proxy.size.width - 44, 1)
+                let innerHeight = max(proxy.size.height - 44, 1)
+                let scale = min(innerWidth / CGFloat(scene.canvas.width), innerHeight / CGFloat(scene.canvas.height))
+                let renderedWidth = CGFloat(scene.canvas.width) * scale
+                let renderedHeight = CGFloat(scene.canvas.height) * scale
+                let originX = 22 + (innerWidth - renderedWidth) / 2
+                let originY = 22 + (innerHeight - renderedHeight) / 2
+                let width = max(CGFloat(bounds[2]) * scale, 14)
+                let height = max(CGFloat(bounds[3]) * scale, 14)
+                let centerX = originX + CGFloat(bounds[0] + bounds[2] / 2) * scale
+                let centerY = originY + CGFloat(bounds[1] + bounds[3] / 2) * scale
+
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .overlay(Rectangle().stroke(Color.accentColor.opacity(0.8), style: StrokeStyle(lineWidth: 1, dash: [5, 4])))
+                    .frame(width: width, height: height)
+                    .position(x: centerX + groupDragPreview.width, y: centerY + groupDragPreview.height)
+                    .gesture(
+                        DragGesture(minimumDistance: 1)
+                            .onChanged { value in groupDragPreview = value.translation }
+                            .onEnded { value in
+                                groupDragPreview = .zero
+                                guard scale > 0 else { return }
+                                model.drag(
+                                    node: item.id,
+                                    dx: Double(value.translation.width / scale),
+                                    dy: Double(value.translation.height / scale)
+                                )
+                            }
+                    )
+                    .accessibilityLabel("Move group \(item.name)")
+                    .help("Move structural group \(item.name)")
+            }
+        }
+    }
+
+    private func resizeHandleSpecs(for kind: String) -> [ResizeHandleSpec] {
+        if kind == "text" {
+            return [
+                ResizeHandleSpec(id: "left", xFactor: 0, yFactor: 0.5, horizontal: true, vertical: false),
+                ResizeHandleSpec(id: "right", xFactor: 1, yFactor: 0.5, horizontal: true, vertical: false),
+            ]
+        }
+        guard ["rect", "image", "ellipse", "path"].contains(kind) else { return [] }
+        return [
+            ResizeHandleSpec(id: "top-left", xFactor: 0, yFactor: 0, horizontal: true, vertical: true),
+            ResizeHandleSpec(id: "top", xFactor: 0.5, yFactor: 0, horizontal: false, vertical: true),
+            ResizeHandleSpec(id: "top-right", xFactor: 1, yFactor: 0, horizontal: true, vertical: true),
+            ResizeHandleSpec(id: "left", xFactor: 0, yFactor: 0.5, horizontal: true, vertical: false),
+            ResizeHandleSpec(id: "right", xFactor: 1, yFactor: 0.5, horizontal: true, vertical: false),
+            ResizeHandleSpec(id: "bottom-left", xFactor: 0, yFactor: 1, horizontal: true, vertical: true),
+            ResizeHandleSpec(id: "bottom", xFactor: 0.5, yFactor: 1, horizontal: false, vertical: true),
+            ResizeHandleSpec(id: "bottom-right", xFactor: 1, yFactor: 1, horizontal: true, vertical: true),
+        ]
+    }
+
+    @ViewBuilder
     private var semanticResizeOverlay: some View {
         GeometryReader { proxy in
             if let scene = model.displayList,
                let item = model.selectedItem,
                let bounds = item.bounds,
-               bounds.count == 4,
-               ["rect", "image", "ellipse", "path"].contains(item.primitive.kind) {
+               bounds.count == 4 {
                 let innerWidth = max(proxy.size.width - 44, 1)
                 let innerHeight = max(proxy.size.height - 44, 1)
                 let scale = min(
@@ -209,28 +286,45 @@ struct ContentView: View {
                 let renderedHeight = CGFloat(scene.canvas.height) * scale
                 let originX = 22 + (innerWidth - renderedWidth) / 2
                 let originY = 22 + (innerHeight - renderedHeight) / 2
-                let x = originX + CGFloat(bounds[0] + bounds[2]) * scale
-                let y = originY + CGFloat(bounds[1] + bounds[3]) * scale
 
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.accentColor)
-                    .overlay(RoundedRectangle(cornerRadius: 2).stroke(.black.opacity(0.8), lineWidth: 1))
-                    .frame(width: 12, height: 12)
-                    .position(x: x + resizePreview.width, y: y + resizePreview.height)
-                    .gesture(
-                        DragGesture(minimumDistance: 1)
-                            .onChanged { value in resizePreview = value.translation }
-                            .onEnded { value in
-                                resizePreview = .zero
-                                guard scale > 0 else { return }
-                                model.resize(
-                                    node: item.id,
-                                    dw: Double(value.translation.width / scale),
-                                    dh: Double(value.translation.height / scale)
-                                )
-                            }
-                    )
-                    .help("Resize \(item.name)")
+                ForEach(resizeHandleSpecs(for: item.primitive.kind)) { handle in
+                    let baseX = originX + CGFloat(bounds[0] + bounds[2] * handle.xFactor) * scale
+                    let baseY = originY + CGFloat(bounds[1] + bounds[3] * handle.yFactor) * scale
+                    let isActive = activeResizeHandle == handle.id
+                    let previewX = isActive && handle.horizontal ? resizePreview.width : 0
+                    let previewY = isActive && handle.vertical ? resizePreview.height : 0
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.accentColor)
+                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(.black.opacity(0.8), lineWidth: 1))
+                        .frame(
+                            width: handle.horizontal && !handle.vertical ? 10 : 12,
+                            height: handle.vertical && !handle.horizontal ? 10 : 12
+                        )
+                        .position(x: baseX + previewX, y: baseY + previewY)
+                        .gesture(
+                            DragGesture(minimumDistance: 1)
+                                .onChanged { value in
+                                    activeResizeHandle = handle.id
+                                    resizePreview = CGSize(
+                                        width: handle.horizontal ? value.translation.width : 0,
+                                        height: handle.vertical ? value.translation.height : 0
+                                    )
+                                }
+                                .onEnded { value in
+                                    resizePreview = .zero
+                                    activeResizeHandle = nil
+                                    guard scale > 0 else { return }
+                                    model.resize(
+                                        node: item.id,
+                                        handle: handle.id,
+                                        dx: handle.horizontal ? Double(value.translation.width / scale) : 0,
+                                        dy: handle.vertical ? Double(value.translation.height / scale) : 0
+                                    )
+                                }
+                        )
+                        .accessibilityLabel("Resize \(item.name) from \(handle.id) handle")
+                        .help("Resize \(item.name) from \(handle.id)")
+                }
             }
         }
     }

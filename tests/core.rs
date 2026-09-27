@@ -2019,6 +2019,336 @@ fn component_inverse_manipulation_blocks_ambiguous_parameter_binding() {
 }
 
 #[test]
+fn framed_text_resize_updates_wrap_width_without_scaling_type() {
+    let src = r##"scene "Text Resize" {
+        canvas 500 300;
+        text copy @id("copy") {
+            role "copy";
+            content "Semantic text frames should reflow without changing the type scale";
+            x 40px; y 90px; size 24px; max_width 180px; line_height 30px; fill "#111111";
+        }
+    }"##;
+    let mut scene = parse_scene(src, "text-resize.glyph").unwrap();
+    solve_scene(&mut scene);
+    let before = scene.nodes.iter().find(|node| node.id == "copy").unwrap();
+    assert_eq!(glyph::query::bounds(before).unwrap()[2], 180.0);
+    let before_size = before.authored.props["size"].number();
+    let before_content = before.authored.props["content"].text().map(str::to_string);
+
+    let plan = glyph::plan_direct_resize(&scene, "copy", 60.0, 0.0).unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert_eq!(plan.edits.len(), 1);
+    assert_eq!(plan.edits[0].property, "max_width");
+    assert_eq!(plan.edits[0].value.number(), Some(240.0));
+
+    let edited = glyph::apply_direct_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("max_width 240px;"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "text-resize.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let after = reparsed
+        .nodes
+        .iter()
+        .find(|node| node.id == "copy")
+        .unwrap();
+    assert_eq!(after.authored.props["size"].number(), before_size);
+    assert_eq!(
+        after.authored.props["content"].text().map(str::to_string),
+        before_content
+    );
+    assert_eq!(after.authored.props["max_width"].number(), Some(240.0));
+    assert_eq!(glyph::query::bounds(after).unwrap()[2], 240.0);
+}
+
+#[test]
+fn text_resize_fails_closed_when_frame_semantics_are_ambiguous() {
+    let point_src = r##"scene "Point Text" {
+        canvas 300 160;
+        text label @id("label") { content "Point text"; x 20px; y 60px; size 24px; fill "#111"; }
+    }"##;
+    let mut point_scene = parse_scene(point_src, "point-text.glyph").unwrap();
+    solve_scene(&mut point_scene);
+    let point_plan = glyph::plan_direct_resize(&point_scene, "label", 30.0, 0.0).unwrap();
+    assert!(!point_plan.allowed, "{point_plan:?}");
+    assert!(point_plan.blocked[0].reason.contains("max_width"));
+
+    let framed_src = r##"scene "Framed Text" {
+        canvas 300 160;
+        text label @id("label") { content "Framed text that can wrap"; x 20px; y 60px; size 24px; max_width 140px; fill "#111"; }
+    }"##;
+    let mut framed_scene = parse_scene(framed_src, "framed-text.glyph").unwrap();
+    solve_scene(&mut framed_scene);
+    let vertical = glyph::plan_direct_resize(&framed_scene, "label", 0.0, 20.0).unwrap();
+    assert!(!vertical.allowed, "{vertical:?}");
+    assert!(vertical.blocked[0].reason.contains("vertical text resize"));
+
+    let transformed_src = r##"scene "Scaled Text" {
+        canvas 300 160;
+        text label @id("label") { content "Scaled text"; x 20px; y 60px; size 24px; max_width 140px; scale_x 1.5; fill "#111"; }
+    }"##;
+    let mut transformed_scene = parse_scene(transformed_src, "scaled-text.glyph").unwrap();
+    solve_scene(&mut transformed_scene);
+    let transformed = glyph::plan_direct_resize(&transformed_scene, "label", 20.0, 0.0).unwrap();
+    assert!(!transformed.allowed, "{transformed:?}");
+    assert!(transformed.blocked[0].reason.contains("affine transform"));
+}
+
+#[test]
+fn component_text_frame_resize_inverts_unambiguous_max_width_parameter() {
+    let src = r##"scene "Component Text Resize" {
+        canvas 600 320;
+        component card {
+            param wrap: Length -> copy.max_width = 120px;
+            text copy @id("copy") { content "Component text should preserve its parameterized frame"; x 0px; y 40px; size 20px; max_width 120px; fill "#111"; }
+        }
+        instance card card1 @id("card1") {
+            x 60px; y 30px; scale 2;
+            param wrap 130px;
+        }
+    }"##;
+    let mut scene = parse_scene(src, "component-text-resize.glyph").unwrap();
+    solve_scene(&mut scene);
+    let child = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "card1/copy")
+        .unwrap();
+    assert_eq!(child.authored.props["max_width"].number(), Some(260.0));
+
+    let plan = glyph::plan_direct_resize(&scene, "card1/copy", 40.0, 0.0).unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert!(plan.edits.is_empty());
+    assert_eq!(plan.instance_parameter_edits.len(), 1);
+    assert_eq!(plan.instance_parameter_edits[0].parameter, "wrap");
+    assert_eq!(
+        plan.instance_parameter_edits[0].next_value.number(),
+        Some(150.0)
+    );
+
+    let edited = glyph::apply_direct_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("param wrap 150px;"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "component-text-resize.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let after = reparsed
+        .nodes
+        .iter()
+        .find(|node| node.id == "card1/copy")
+        .unwrap();
+    assert_eq!(after.authored.props["max_width"].number(), Some(300.0));
+    assert_eq!(glyph::query::bounds(after).unwrap()[2], 300.0);
+}
+
+#[test]
+fn multi_edge_rect_resize_preserves_opposite_edges() {
+    let src = r##"scene "Handle Rect" {
+        canvas 400 300;
+        rect box @id("box") { x 20px; y 30px; width 100px; height 80px; fill "#334455"; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-rect.glyph").unwrap();
+    solve_scene(&mut scene);
+
+    let left =
+        glyph::plan_direct_resize_from_handle(&scene, "box", glyph::ResizeHandle::Left, 15.0, 0.0)
+            .unwrap();
+    assert!(left.allowed, "{left:?}");
+    assert_eq!(left.target_bounds, [35.0, 30.0, 85.0, 80.0]);
+    let edited = glyph::apply_direct_handle_resize_source(src, &left).unwrap();
+    assert!(edited.contains("x 35px;"), "{edited}");
+    assert!(edited.contains("width 85px;"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "handle-rect.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    assert_eq!(
+        glyph::query::bounds(reparsed.nodes.iter().find(|node| node.id == "box").unwrap()),
+        Some([35.0, 30.0, 85.0, 80.0])
+    );
+
+    let top_left = glyph::plan_direct_resize_from_handle(
+        &scene,
+        "box",
+        glyph::ResizeHandle::TopLeft,
+        10.0,
+        20.0,
+    )
+    .unwrap();
+    assert!(top_left.allowed, "{top_left:?}");
+    assert_eq!(top_left.target_bounds, [30.0, 50.0, 90.0, 60.0]);
+}
+
+#[test]
+fn multi_edge_ellipse_resize_moves_center_to_hold_opposite_edge() {
+    let src = r##"scene "Handle Ellipse" {
+        canvas 400 300;
+        ellipse dot @id("dot") { cx 120px; cy 100px; rx 50px; ry 30px; fill "#445566"; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-ellipse.glyph").unwrap();
+    solve_scene(&mut scene);
+    let plan = glyph::plan_direct_resize_from_handle(
+        &scene,
+        "dot",
+        glyph::ResizeHandle::BottomRight,
+        20.0,
+        10.0,
+    )
+    .unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert_eq!(plan.target_bounds, [70.0, 70.0, 120.0, 70.0]);
+    let edited = glyph::apply_direct_handle_resize_source(src, &plan).unwrap();
+    let mut reparsed = parse_scene(&edited, "handle-ellipse.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let dot = reparsed.nodes.iter().find(|node| node.id == "dot").unwrap();
+    assert_eq!(glyph::query::bounds(dot), Some([70.0, 70.0, 120.0, 70.0]));
+    assert_eq!(dot.authored.props["cx"].number(), Some(130.0));
+    assert_eq!(dot.authored.props["cy"].number(), Some(105.0));
+}
+
+#[test]
+fn multi_edge_path_resize_preserves_d_and_exact_anchor() {
+    let src = r##"scene "Handle Path" {
+        canvas 300 240;
+        path mark @id("mark") { d "M10 20 L60 20 L60 70 Z"; fill "#112233"; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-path.glyph").unwrap();
+    solve_scene(&mut scene);
+    let plan = glyph::plan_direct_resize_from_handle(
+        &scene,
+        "mark",
+        glyph::ResizeHandle::TopLeft,
+        10.0,
+        5.0,
+    )
+    .unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert_eq!(plan.target_bounds, [20.0, 25.0, 40.0, 45.0]);
+    let edited = glyph::apply_direct_handle_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("d \"M10 20 L60 20 L60 70 Z\";"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "handle-path.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    assert_eq!(
+        glyph::query::bounds(
+            reparsed
+                .nodes
+                .iter()
+                .find(|node| node.id == "mark")
+                .unwrap()
+        ),
+        Some([20.0, 25.0, 40.0, 45.0])
+    );
+}
+
+#[test]
+fn multi_edge_text_frame_resize_preserves_right_edge() {
+    let src = r##"scene "Handle Text" {
+        canvas 400 220;
+        text copy @id("copy") { content "Text frame handle semantics"; x 40px; y 80px; size 22px; max_width 180px; fill "#111"; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-text.glyph").unwrap();
+    solve_scene(&mut scene);
+    let before =
+        glyph::query::bounds(scene.nodes.iter().find(|node| node.id == "copy").unwrap()).unwrap();
+    let plan =
+        glyph::plan_direct_resize_from_handle(&scene, "copy", glyph::ResizeHandle::Left, 20.0, 0.0)
+            .unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert_eq!(plan.target_bounds[0], before[0] + 20.0);
+    assert_eq!(plan.target_bounds[2], 160.0);
+    let edited = glyph::apply_direct_handle_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("max_width 160px;"), "{edited}");
+    assert!(edited.contains("x 60px;"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "handle-text.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let after = glyph::query::bounds(
+        reparsed
+            .nodes
+            .iter()
+            .find(|node| node.id == "copy")
+            .unwrap(),
+    )
+    .unwrap();
+    assert!((after[0] - (before[0] + 20.0)).abs() < 0.0001);
+    assert!((after[0] + after[2] - (before[0] + before[2])).abs() < 0.0001);
+}
+
+#[test]
+fn multi_edge_resize_composes_size_and_position_constraints() {
+    let src = r##"scene "Handle Constraints" {
+        canvas 400 240;
+        rect box @id("box") { x 150px; y 40px; width 100px; height 60px; fill "#111"; }
+        constrain box.center_x == canvas.center_x @required;
+    }"##;
+    let mut scene = parse_scene(src, "handle-constraints.glyph").unwrap();
+    solve_scene(&mut scene);
+    let plan =
+        glyph::plan_direct_resize_from_handle(&scene, "box", glyph::ResizeHandle::Left, 20.0, 0.0)
+            .unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    let movement = plan.movement_plan.as_ref().expect("anchor movement plan");
+    assert_eq!(movement.constraint_edits.len(), 1);
+    let edited = glyph::apply_direct_handle_resize_source(src, &plan).unwrap();
+    assert!(
+        edited.contains("constrain box.center_x == canvas.center_x + 10 @required;"),
+        "{edited}"
+    );
+    let mut reparsed = parse_scene(&edited, "handle-constraints.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    assert_eq!(
+        glyph::query::bounds(reparsed.nodes.iter().find(|node| node.id == "box").unwrap()),
+        Some([170.0, 40.0, 80.0, 60.0])
+    );
+}
+
+#[test]
+fn multi_edge_component_resize_inverts_position_and_size_parameters() {
+    let src = r##"scene "Handle Component" {
+        canvas 500 300;
+        component card {
+            param px: Length -> bg.x = 10px;
+            param w: Length -> bg.width = 100px;
+            rect bg @id("bg") { x 10px; y 20px; width 100px; height 60px; fill "#111"; }
+        }
+        instance card card1 @id("card1") { x 100px; scale 2; param px 10px; param w 100px; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-component.glyph").unwrap();
+    solve_scene(&mut scene);
+    let plan = glyph::plan_direct_resize_from_handle(
+        &scene,
+        "card1/bg",
+        glyph::ResizeHandle::Left,
+        20.0,
+        0.0,
+    )
+    .unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    let edited = glyph::apply_direct_handle_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("param px 20px;"), "{edited}");
+    assert!(edited.contains("param w 90px;"), "{edited}");
+    let mut reparsed = parse_scene(&edited, "handle-component.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    assert_eq!(
+        glyph::query::bounds(
+            reparsed
+                .nodes
+                .iter()
+                .find(|node| node.id == "card1/bg")
+                .unwrap()
+        ),
+        Some([140.0, 40.0, 180.0, 120.0])
+    );
+}
+
+#[test]
+fn multi_edge_resize_rejects_non_positive_target_bounds() {
+    let src = r##"scene "Handle Reject" {
+        canvas 200 120;
+        rect box @id("box") { x 20px; y 20px; width 50px; height 40px; }
+    }"##;
+    let mut scene = parse_scene(src, "handle-reject.glyph").unwrap();
+    solve_scene(&mut scene);
+    let err =
+        glyph::plan_direct_resize_from_handle(&scene, "box", glyph::ResizeHandle::Left, 60.0, 0.0)
+            .unwrap_err();
+    assert!(err.to_string().contains("non-positive"), "{err}");
+}
+
+#[test]
 fn object_bounds_include_images_paths_and_affine_translation() {
     let src = r##"scene "Bounds" {
         canvas 400 300;
@@ -2119,7 +2449,7 @@ fn path_direct_resize_uses_affine_scale_without_rewriting_d() {
 }
 
 #[test]
-fn path_direct_resize_fails_closed_for_rotated_or_constrained_intent() {
+fn path_direct_resize_supports_translate_relations_and_blocks_ambiguous_constraints() {
     let rotated = r##"scene "Rotated Path Resize" {
         canvas 300 240;
         path mark @id("mark") { d "M10 20 L60 20 L60 70 Z"; rotate 15deg; }
@@ -2139,11 +2469,31 @@ fn path_direct_resize_fails_closed_for_rotated_or_constrained_intent() {
     solve_scene(&mut constrained_scene);
     let constrained_plan =
         glyph::plan_direct_resize(&constrained_scene, "mark", 10.0, 0.0).unwrap();
-    assert!(!constrained_plan.allowed, "{constrained_plan:?}");
+    assert!(constrained_plan.allowed, "{constrained_plan:?}");
+    assert_eq!(constrained_plan.constraint_edits.len(), 1);
     assert_eq!(
-        constrained_plan.blocked[0].constraint_ids,
-        vec!["constraint.1"]
+        constrained_plan.constraint_edits[0].constraint_id,
+        "constraint.1"
     );
+    let edited = glyph::apply_direct_resize_source(constrained, &constrained_plan).unwrap();
+    assert!(edited.contains("scale_x 1.2;"), "{edited}");
+    assert!(
+        edited.contains("constrain mark.translate_x == 5px - 2 @required;"),
+        "{edited}"
+    );
+    assert!(edited.contains("d \"M10 20 L60 20 L60 70 Z\";"), "{edited}");
+
+    let scale_constrained = r##"scene "Scale Constrained Path Resize" {
+        canvas 300 240;
+        path mark @id("mark") { d "M10 20 L60 20 L60 70 Z"; scale_x 1; }
+        constrain mark.scale_x == 1 @required;
+    }"##;
+    let mut scale_scene =
+        parse_scene(scale_constrained, "path-resize-scale-constrained.glyph").unwrap();
+    solve_scene(&mut scale_scene);
+    let blocked = glyph::plan_direct_resize(&scale_scene, "mark", 10.0, 0.0).unwrap();
+    assert!(!blocked.allowed, "{blocked:?}");
+    assert_eq!(blocked.blocked[0].constraint_ids, vec!["constraint.1"]);
 }
 
 #[test]
@@ -2242,4 +2592,305 @@ fn constraint_source_edits_fail_closed_on_dimensional_mismatch() {
     )
     .unwrap_err();
     assert!(err.to_string().contains("dimension mismatch"), "{err}");
+}
+
+#[test]
+fn structural_groups_resolve_members_and_nested_bounds() {
+    let src = r##"scene "Groups" {
+        canvas 500 300;
+        rect card @id("card") { x 20px; y 30px; width 100px; height 60px; }
+        ellipse badge @id("badge") { cx 180px; cy 80px; rx 20px; ry 15px; }
+        group inner @id("inner") { member card; }
+        group outer @id("outer") { member inner; member badge; }
+    }"##;
+    let mut scene = parse_scene(src, "groups.glyph").unwrap();
+    solve_scene(&mut scene);
+    let inner = scene.nodes.iter().find(|node| node.id == "inner").unwrap();
+    let outer = scene.nodes.iter().find(|node| node.id == "outer").unwrap();
+    assert_eq!(inner.members, vec!["card"]);
+    assert_eq!(outer.members, vec!["inner", "badge"]);
+    assert_eq!(
+        glyph::query::bounds_in_scene(&scene, inner),
+        Some([20.0, 30.0, 100.0, 60.0])
+    );
+    assert_eq!(
+        glyph::query::bounds_in_scene(&scene, outer),
+        Some([20.0, 30.0, 180.0, 65.0])
+    );
+    let display = glyph::build_display_list(&scene);
+    assert_eq!(
+        display.object_map["outer"].bounds,
+        Some([20.0, 30.0, 180.0, 65.0])
+    );
+}
+
+#[test]
+fn structural_group_membership_rejects_missing_duplicate_cycles_and_multiple_owners() {
+    let missing = r#"scene "Missing" { canvas 100 100; group g { member nope; } }"#;
+    assert!(
+        parse_scene(missing, "group-missing.glyph")
+            .unwrap_err()
+            .to_string()
+            .contains("missing member")
+    );
+
+    let duplicate = r#"scene "Duplicate" { canvas 100 100; rect a { x 0; y 0; width 10; height 10; } group g { member a; member a; } }"#;
+    assert!(
+        parse_scene(duplicate, "group-duplicate.glyph")
+            .unwrap_err()
+            .to_string()
+            .contains("duplicate member")
+    );
+
+    let cycle = r#"scene "Cycle" { canvas 100 100; group a { member b; } group b { member a; } }"#;
+    assert!(
+        parse_scene(cycle, "group-cycle.glyph")
+            .unwrap_err()
+            .to_string()
+            .contains("membership cycle")
+    );
+
+    let owners = r#"scene "Owners" { canvas 100 100; rect a { x 0; y 0; width 10; height 10; } group g1 { member a; } group g2 { member a; } }"#;
+    assert!(
+        parse_scene(owners, "group-owners.glyph")
+            .unwrap_err()
+            .to_string()
+            .contains("multiple groups")
+    );
+}
+
+#[test]
+fn structural_group_drag_translates_members_and_preserves_internal_relations() {
+    let src = r##"scene "Group Drag" {
+        canvas 500 300;
+        rect left @id("left") { x 40px; y 50px; width 80px; height 40px; fill "#111"; }
+        rect right @id("right") { x 40px; y 120px; width 60px; height 30px; fill "#222"; }
+        constrain left.x == right.x @required;
+        group pair @id("pair") { member left; member right; }
+    }"##;
+    let mut scene = parse_scene(src, "group-drag.glyph").unwrap();
+    solve_scene(&mut scene);
+    let pair = scene.nodes.iter().find(|node| node.id == "pair").unwrap();
+    assert_eq!(
+        glyph::query::bounds_in_scene(&scene, pair),
+        Some([40.0, 50.0, 80.0, 100.0])
+    );
+
+    let plan = glyph::plan_direct_manipulation(&scene, "pair", 25.0, -10.0).unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert_eq!(plan.member_plans.len(), 2);
+    assert!(plan.constraint_edits.is_empty());
+    let edited = glyph::apply_direct_manipulation_source(src, &plan).unwrap();
+    assert!(edited.contains("member left;"), "{edited}");
+    assert!(edited.contains("member right;"), "{edited}");
+    assert!(edited.contains("x 65px;"), "{edited}");
+    assert!(
+        edited.contains("constrain left.x == right.x @required;"),
+        "{edited}"
+    );
+
+    let mut reparsed = parse_scene(&edited, "group-drag.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let moved = reparsed
+        .nodes
+        .iter()
+        .find(|node| node.id == "pair")
+        .unwrap();
+    assert_eq!(
+        glyph::query::bounds_in_scene(&reparsed, moved),
+        Some([65.0, 40.0, 80.0, 100.0])
+    );
+}
+
+#[test]
+fn component_path_resize_inverts_explicit_affine_parameters() {
+    let src = r##"scene "Component Path Resize" {
+        canvas 600 320;
+        component icon {
+            param sx: Number -> mark.scale_x = 1;
+            param sy: Number -> mark.scale_y = 1;
+            param tx: Length -> mark.translate_x = 0px;
+            param ty: Length -> mark.translate_y = 0px;
+            path mark @id("mark") {
+                d "M10 20 L60 20 L60 70 Z";
+                scale_x 1; scale_y 1; translate_x 0px; translate_y 0px; fill "#112233";
+            }
+        }
+        instance icon icon1 @id("icon1") {
+            x 100px; y 40px; scale 2;
+            param sx 1; param sy 1; param tx 0px; param ty 0px;
+        }
+    }"##;
+    let mut scene = parse_scene(src, "component-path-resize.glyph").unwrap();
+    solve_scene(&mut scene);
+    let before = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "icon1/mark")
+        .unwrap();
+    assert_eq!(
+        glyph::query::bounds(before),
+        Some([120.0, 80.0, 100.0, 100.0])
+    );
+
+    let plan = glyph::plan_direct_resize(&scene, "icon1/mark", 20.0, 10.0).unwrap();
+    assert!(plan.allowed, "{plan:?}");
+    assert!(plan.edits.is_empty(), "{plan:?}");
+    assert_eq!(plan.instance_parameter_edits.len(), 4, "{plan:?}");
+    let edited = glyph::apply_direct_resize_source(src, &plan).unwrap();
+    assert!(edited.contains("param sx 1.2;"), "{edited}");
+    assert!(edited.contains("param sy 1.1;"), "{edited}");
+    assert!(edited.contains("param tx -2px;"), "{edited}");
+    assert!(edited.contains("param ty -2px;"), "{edited}");
+    assert!(edited.contains("d \"M10 20 L60 20 L60 70 Z\";"), "{edited}");
+
+    let mut reparsed = parse_scene(&edited, "component-path-resize.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let after = reparsed
+        .nodes
+        .iter()
+        .find(|node| node.id == "icon1/mark")
+        .unwrap();
+    let bounds = glyph::query::bounds(after).unwrap();
+    assert!((bounds[0] - 120.0).abs() < 0.0001, "{bounds:?}");
+    assert!((bounds[1] - 80.0).abs() < 0.0001, "{bounds:?}");
+    assert!((bounds[2] - 120.0).abs() < 0.0001, "{bounds:?}");
+    assert!((bounds[3] - 110.0).abs() < 0.0001, "{bounds:?}");
+}
+
+#[test]
+fn component_path_drag_inverts_translation_parameters_and_resize_requires_full_binding() {
+    let drag_src = r##"scene "Component Path Drag" {
+        canvas 600 320;
+        component icon {
+            param tx: Length -> mark.translate_x = 0px;
+            param ty: Length -> mark.translate_y = 0px;
+            path mark @id("mark") { d "M10 20 L60 20 L60 70 Z"; translate_x 0px; translate_y 0px; }
+        }
+        instance icon icon1 @id("icon1") { x 100px; y 40px; scale 2; param tx 0px; param ty 0px; }
+    }"##;
+    let mut drag_scene = parse_scene(drag_src, "component-path-drag.glyph").unwrap();
+    solve_scene(&mut drag_scene);
+    let before = drag_scene
+        .nodes
+        .iter()
+        .find(|node| node.id == "icon1/mark")
+        .unwrap();
+    assert_eq!(
+        glyph::query::bounds(before),
+        Some([120.0, 80.0, 100.0, 100.0])
+    );
+    let drag = glyph::plan_direct_manipulation(&drag_scene, "icon1/mark", 20.0, -10.0).unwrap();
+    assert!(drag.allowed, "{drag:?}");
+    assert_eq!(drag.instance_parameter_edits.len(), 2);
+    let dragged = glyph::apply_direct_manipulation_source(drag_src, &drag).unwrap();
+    assert!(dragged.contains("param tx 10px;"), "{dragged}");
+    assert!(dragged.contains("param ty -5px;"), "{dragged}");
+    let mut reparsed = parse_scene(&dragged, "component-path-drag.glyph").unwrap();
+    solve_scene(&mut reparsed);
+    let after = reparsed
+        .nodes
+        .iter()
+        .find(|node| node.id == "icon1/mark")
+        .unwrap();
+    assert_eq!(
+        glyph::query::bounds(after),
+        Some([140.0, 70.0, 100.0, 100.0])
+    );
+
+    let resize = glyph::plan_direct_resize(&drag_scene, "icon1/mark", 20.0, 0.0).unwrap();
+    assert!(!resize.allowed, "{resize:?}");
+    assert!(
+        resize
+            .blocked
+            .iter()
+            .any(|block| block.reason.contains("scale_x")),
+        "{resize:?}"
+    );
+}
+
+#[test]
+fn accessibility_semantics_lower_to_display_svg_and_commander_draw() {
+    let src = r##"scene "Accessibility" {
+        canvas 320 180;
+        text label @id("label") { content "Continue"; x 20px; y 40px; size 18px; a11y_hidden "true"; }
+        rect button @id("button") {
+            x 20px; y 60px; width 120px; height 50px; fill "#224466";
+            a11y_role "button"; a11y_labelled_by "label"; a11y_hint "Continues to checkout";
+            interactive "true"; reading_order 1;
+        }
+    }"##;
+    let mut scene = parse_scene(src, "accessibility.glyph").unwrap();
+    solve_scene(&mut scene);
+    let display = glyph::build_display_list(&scene);
+    let button = &display.object_map["button"].accessibility;
+    assert_eq!(button.role.as_deref(), Some("button"));
+    assert_eq!(button.labelled_by.as_deref(), Some("label"));
+    assert_eq!(button.hint.as_deref(), Some("Continues to checkout"));
+    assert!(button.interactive);
+    assert_eq!(button.reading_order, Some(1));
+    let svg = glyph::render_svg(&scene);
+    assert!(svg.contains("role=\"button\""), "{svg}");
+    assert!(svg.contains("aria-labelledby=\"label\""), "{svg}");
+    assert!(
+        svg.contains("aria-description=\"Continues to checkout\""),
+        "{svg}"
+    );
+    assert!(svg.contains("tabindex=\"0\""), "{svg}");
+    assert!(svg.contains("data-glyph-reading-order=\"1\""), "{svg}");
+    assert!(svg.contains("aria-hidden=\"true\""), "{svg}");
+
+    let draw = glyph::commander_draw_document(&scene);
+    assert_eq!(
+        draw["nodes"][0]["glyphAccessibility"]["hidden"],
+        serde_json::json!(true)
+    );
+    assert_eq!(
+        draw["nodes"][1]["glyphAccessibility"]["labelledBy"],
+        serde_json::json!("label")
+    );
+}
+
+#[test]
+fn accessibility_audit_reports_structural_failures_deterministically() {
+    let src = r##"scene "Accessibility Audit" {
+        canvas 320 220;
+        rect first @id("first") { x 10px; y 10px; width 30px; height 30px; interactive "true"; reading_order 1; }
+        rect second @id("second") { x 60px; y 10px; width 60px; height 50px; a11y_role "button"; reading_order 1; }
+        rect hidden @id("hidden") { x 10px; y 80px; width 60px; height 50px; a11y_hidden "true"; interactive "true"; a11y_label "Hidden action"; }
+        rect broken @id("broken") { x 100px; y 80px; width 60px; height 50px; a11y_labelled_by "missing"; }
+    }"##;
+    let mut scene = parse_scene(src, "accessibility-audit.glyph").unwrap();
+    solve_scene(&mut scene);
+    let report = glyph::accessibility_report(&scene);
+    assert_eq!(report.interactive_nodes, 1);
+    assert_eq!(report.reading_order[..2], ["first", "second"]);
+    let codes = report
+        .issues
+        .iter()
+        .map(|issue| issue.code.as_str())
+        .collect::<Vec<_>>();
+    assert!(codes.contains(&"missing_accessible_name"), "{report:?}");
+    assert!(codes.contains(&"small_interactive_target"), "{report:?}");
+    assert!(codes.contains(&"duplicate_reading_order"), "{report:?}");
+    assert!(codes.contains(&"hidden_interactive"), "{report:?}");
+    assert!(codes.contains(&"missing_label_target"), "{report:?}");
+}
+
+#[test]
+fn accessibility_properties_fail_closed_on_invalid_values() {
+    let bad_flag = r#"scene "Bad Flag" { canvas 100 100; rect a { x 0; y 0; width 10; height 10; interactive "yes"; } }"#;
+    let err = parse_scene(bad_flag, "bad-a11y-flag.glyph").unwrap_err();
+    assert!(err.to_string().contains("expects true or false"), "{err}");
+
+    let bad_live = r#"scene "Bad Live" { canvas 100 100; rect a { x 0; y 0; width 10; height 10; a11y_live "loud"; } }"#;
+    let err = parse_scene(bad_live, "bad-a11y-live.glyph").unwrap_err();
+    assert!(
+        err.to_string().contains("off, polite, or assertive"),
+        "{err}"
+    );
+
+    let bad_order = r#"scene "Bad Order" { canvas 100 100; rect a { x 0; y 0; width 10; height 10; reading_order 1.5; } }"#;
+    let err = parse_scene(bad_order, "bad-reading-order.glyph").unwrap_err();
+    assert!(err.to_string().contains("non-negative integer"), "{err}");
 }

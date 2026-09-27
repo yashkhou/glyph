@@ -54,6 +54,32 @@ fn common(item: &DisplayItem) -> String {
         format!("id=\"{}\"", esc(&item.id)),
         format!("data-glyph-role=\"{}\"", esc(&item.roles.join(" "))),
     ];
+    if let Some(role) = &item.accessibility.role {
+        attrs.push(format!("role=\"{}\"", esc(role)));
+    }
+    if let Some(label) = &item.accessibility.label {
+        attrs.push(format!("aria-label=\"{}\"", esc(label)));
+    }
+    if let Some(labelled_by) = &item.accessibility.labelled_by {
+        attrs.push(format!("aria-labelledby=\"{}\"", esc(labelled_by)));
+    }
+    if let Some(hint) = &item.accessibility.hint {
+        attrs.push(format!("aria-description=\"{}\"", esc(hint)));
+    }
+    if let Some(live) = &item.accessibility.live
+        && live != "off"
+    {
+        attrs.push(format!("aria-live=\"{}\"", esc(live)));
+    }
+    if item.accessibility.hidden {
+        attrs.push("aria-hidden=\"true\"".into());
+    }
+    if item.accessibility.interactive && !item.accessibility.hidden {
+        attrs.push("tabindex=\"0\"".into());
+    }
+    if let Some(order) = item.accessibility.reading_order {
+        attrs.push(format!("data-glyph-reading-order=\"{order}\""));
+    }
     let transform = transform_attr(item);
     if !transform.is_empty() {
         attrs.push(transform.trim_start().to_string());

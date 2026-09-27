@@ -221,6 +221,21 @@ pub fn commander_draw_document(scene: &Scene) -> JsonValue {
                 DisplayPrimitive::Group => unreachable!(),
             };
             let object = base.as_object_mut().expect("CommanderDraw node must be object");
+            if item.accessibility != Default::default() {
+                object.insert(
+                    "glyphAccessibility".into(),
+                    json!({
+                        "label": item.accessibility.label,
+                        "role": item.accessibility.role,
+                        "hint": item.accessibility.hint,
+                        "labelledBy": item.accessibility.labelled_by,
+                        "live": item.accessibility.live,
+                        "hidden": item.accessibility.hidden,
+                        "interactive": item.accessibility.interactive,
+                        "readingOrder": item.accessibility.reading_order,
+                    }),
+                );
+            }
             if let Some(matrix) = transform_matrix(&item.transform) {
                 object.insert("transform".into(), json!({"matrix":matrix}));
             }

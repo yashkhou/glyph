@@ -257,3 +257,127 @@ extension GlyphDocumentModelTests {
         XCTAssertEqual(model.constraints.count, 2)
     }
 }
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testTextFrameResizeEditsWrapWidthAndFailsClosedVertically() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-text-resize-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("text-resize.glyph")
+        let source = #"""
+        scene "Studio Text Resize" {
+          canvas 420 240;
+          text copy @id("copy") {
+            content "Semantic text frames reflow without scaling type";
+            x 30px; y 70px; size 22px; max_width 160px; line_height 28px; fill "#111111";
+          }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.displayList?.objectMap["copy"]?.bounds?[2], 160)
+
+        model.resize(node: "copy", dw: 50, dh: 0)
+        let resized = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(resized.contains("max_width 210px;"), resized)
+        XCTAssertTrue(resized.contains("size 22px;"), resized)
+        XCTAssertEqual(model.lastResizePlan?.allowed, true)
+        XCTAssertEqual(model.displayList?.objectMap["copy"]?.bounds?[2], 210)
+
+        model.undoSemanticEdit()
+        let undone = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(undone.contains("max_width 160px;"), undone)
+        XCTAssertEqual(model.displayList?.objectMap["copy"]?.bounds?[2], 160)
+
+        let beforeBlocked = try String(contentsOf: sourceURL, encoding: .utf8)
+        model.resize(node: "copy", dw: 0, dh: 20)
+        let afterBlocked = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertEqual(afterBlocked, beforeBlocked)
+        XCTAssertEqual(model.lastResizePlan?.allowed, false)
+        XCTAssertTrue(
+            model.lastResizePlan?.blocked.first?.reason.contains("vertical text resize") == true,
+            model.lastResizePlan?.blocked.first?.reason ?? "missing block reason"
+        )
+    }
+}
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testMultiEdgeHandleResizePreservesOppositeEdgeAndUndo() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-handle-resize-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("handle-resize.glyph")
+        let source = #"""
+        scene "Studio Handle Resize" {
+          canvas 360 240;
+          rect box @id("box") { x 20px; y 30px; width 100px; height 80px; fill "#334455"; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.displayList?.objectMap["box"]?.bounds, [20, 30, 100, 80])
+
+        model.resize(node: "box", handle: "left", dx: 15, dy: 0)
+        let resized = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(resized.contains("x 35px;"), resized)
+        XCTAssertTrue(resized.contains("width 85px;"), resized)
+        XCTAssertEqual(model.lastHandleResizePlan?.allowed, true)
+        XCTAssertEqual(model.lastHandleResizePlan?.handle, "left")
+        XCTAssertEqual(model.displayList?.objectMap["box"]?.bounds, [35, 30, 85, 80])
+
+        model.undoSemanticEdit()
+        let undone = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(undone.contains("x 20px;"), undone)
+        XCTAssertTrue(undone.contains("width 100px;"), undone)
+        XCTAssertEqual(model.displayList?.objectMap["box"]?.bounds, [20, 30, 100, 80])
+    }
+}
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStructuralGroupDragMovesMembersAndPreservesMembership() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-group-drag-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("group-drag.glyph")
+        let source = #"""
+        scene "Studio Group Drag" {
+          canvas 420 260;
+          rect left @id("left") { x 40px; y 50px; width 80px; height 40px; }
+          rect right @id("right") { x 40px; y 120px; width 60px; height 30px; }
+          constrain left.x == right.x @required;
+          group pair @id("pair") { member left; member right; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.displayList?.objectMap["pair"]?.bounds, [40, 50, 80, 100])
+
+        model.drag(node: "pair", dx: 20, dy: -10)
+        let moved = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(moved.contains("member left;"), moved)
+        XCTAssertTrue(moved.contains("member right;"), moved)
+        XCTAssertTrue(moved.contains("x 60px;"), moved)
+        XCTAssertTrue(moved.contains("constrain left.x == right.x @required;"), moved)
+        XCTAssertEqual(model.lastManipulationPlan?.allowed, true)
+        XCTAssertEqual(model.lastManipulationPlan?.memberPlans?.count, 2)
+        XCTAssertEqual(model.displayList?.objectMap["pair"]?.bounds, [60, 40, 80, 100])
+
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.displayList?.objectMap["pair"]?.bounds, [40, 50, 80, 100])
+    }
+}

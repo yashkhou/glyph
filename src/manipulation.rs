@@ -1,5 +1,8 @@
 use crate::{
-    model::{Constraint, Node, NodeKind, PropertyRef, Quantity, Relation, Scene, Unit, Value},
+    model::{
+        Constraint, ConstraintRhs, Dimension, Node, NodeKind, PropertyRef, Quantity, Relation,
+        Scene, Unit, Value, property_dimension,
+    },
     query,
     solver::{property_value, solve_scene},
     source_edit::{
@@ -60,6 +63,8 @@ pub struct DirectManipulationPlan {
     pub edits: Vec<ManipulationEdit>,
     pub constraint_edits: Vec<ConstraintOffsetEdit>,
     pub instance_parameter_edits: Vec<ComponentParameterEdit>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member_plans: Vec<DirectManipulationPlan>,
     pub blocked: Vec<ManipulationBlock>,
     pub note: String,
 }
@@ -161,7 +166,20 @@ fn component_local_value(node: &Node, property: &str) -> Result<Value> {
     let local = match property {
         "x" | "cx" => (transformed - origin.offset_x) / origin.scale,
         "y" | "cy" => (transformed - origin.offset_y) / origin.scale,
-        _ => transformed / origin.scale,
+        "translate_x" if node.kind == NodeKind::Path => {
+            let local_origin = node_number(node, "origin_x", 0.0);
+            (transformed - origin.offset_x - (origin.scale - 1.0) * local_origin) / origin.scale
+        }
+        "translate_y" if node.kind == NodeKind::Path => {
+            let local_origin = node_number(node, "origin_y", 0.0);
+            (transformed - origin.offset_y - (origin.scale - 1.0) * local_origin) / origin.scale
+        }
+        "scale" | "scale_x" | "scale_y" if node.kind == NodeKind::Path => {
+            transformed / origin.scale
+        }
+        "origin_x" | "origin_y" if node.kind == NodeKind::Path => transformed,
+        _ if property_dimension(property) == Some(Dimension::Length) => transformed / origin.scale,
+        _ => transformed,
     };
     Ok(match authored {
         Value::Quantity(quantity) => Value::Quantity(Quantity {
@@ -249,10 +267,18 @@ fn component_parameter_edit(
         ));
     }
     let previous_value = component_local_value(node, property)?;
+    let local_delta = match property {
+        "x" | "cx" | "y" | "cy" => delta / origin.scale,
+        "translate_x" | "translate_y" if node.kind == NodeKind::Path => delta / origin.scale,
+        "scale" | "scale_x" | "scale_y" if node.kind == NodeKind::Path => delta / origin.scale,
+        "origin_x" | "origin_y" if node.kind == NodeKind::Path => delta,
+        _ if property_dimension(property) == Some(Dimension::Length) => delta / origin.scale,
+        _ => delta,
+    };
     let next_number = previous_value
         .number()
         .ok_or_else(|| anyhow!("component parameter {} is not numeric", bindings[0]))?
-        + delta / origin.scale;
+        + local_delta;
     let next_value = match previous_value {
         Value::Quantity(quantity) => Value::Quantity(Quantity {
             value: next_number,
@@ -467,6 +493,209 @@ fn axis_constraint_resolution(
     )
 }
 
+fn group_leaf_ids(scene: &Scene, group: &Node) -> Result<Vec<String>> {
+    let mut leaves = Vec::new();
+    fn visit(scene: &Scene, node: &Node, leaves: &mut Vec<String>) -> Result<()> {
+        if node.kind != NodeKind::Group {
+            leaves.push(node.id.clone());
+            return Ok(());
+        }
+        for member_id in &node.members {
+            let member = scene
+                .nodes
+                .iter()
+                .find(|candidate| candidate.id == *member_id)
+                .ok_or_else(|| {
+                    anyhow!("group {} references missing member {member_id}", node.id)
+                })?;
+            visit(scene, member, leaves)?;
+        }
+        Ok(())
+    }
+    visit(scene, group, &mut leaves)?;
+    Ok(leaves)
+}
+
+fn plan_group_translation(
+    scene: &Scene,
+    group: &Node,
+    dx: f64,
+    dy: f64,
+) -> Result<DirectManipulationPlan> {
+    let leaves = group_leaf_ids(scene, group)?;
+    if leaves.is_empty() {
+        return Ok(DirectManipulationPlan {
+            node_id: group.id.clone(),
+            dx,
+            dy,
+            allowed: false,
+            edits: vec![],
+            constraint_edits: vec![],
+            instance_parameter_edits: vec![],
+            member_plans: vec![],
+            blocked: vec![ManipulationBlock {
+                axis: if dx.abs() > f64::EPSILON {
+                    ManipulationAxis::Horizontal
+                } else {
+                    ManipulationAxis::Vertical
+                },
+                constraint_ids: vec![],
+                properties: vec!["members".into()],
+                reason: "empty structural groups have no geometry to translate".into(),
+            }],
+            note: "group drag blocked because the group has no members".into(),
+        });
+    }
+    if dx.abs() <= f64::EPSILON && dy.abs() <= f64::EPSILON {
+        return Ok(DirectManipulationPlan {
+            node_id: group.id.clone(),
+            dx,
+            dy,
+            allowed: true,
+            edits: vec![],
+            constraint_edits: vec![],
+            instance_parameter_edits: vec![],
+            member_plans: vec![],
+            blocked: vec![],
+            note: "group translation is a no-op".into(),
+        });
+    }
+
+    let before = leaves
+        .iter()
+        .map(|id| {
+            let node = scene
+                .nodes
+                .iter()
+                .find(|candidate| candidate.id == *id)
+                .ok_or_else(|| anyhow!("group member {id} disappeared"))?;
+            let bounds = query::bounds(node)
+                .ok_or_else(|| anyhow!("group member {id} has no measurable bounds"))?;
+            Ok((id.clone(), bounds))
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    // Relations between two members of the same group are translation invariant when both
+    // referenced properties move on the same axis. Plan leaf source edits without those
+    // internal relations, then validate the fully composed edit against the original scene.
+    let mut planning_scene = scene.clone();
+    planning_scene.constraints.retain(|constraint| {
+        let ConstraintRhs::Property(rhs) = &constraint.rhs else {
+            return true;
+        };
+        if !leaves.iter().any(|id| id == &constraint.lhs.node)
+            || !leaves.iter().any(|id| id == &rhs.node)
+        {
+            return true;
+        }
+        let horizontal =
+            positional_property(&constraint.lhs.property, ManipulationAxis::Horizontal)
+                && positional_property(&rhs.property, ManipulationAxis::Horizontal);
+        let vertical = positional_property(&constraint.lhs.property, ManipulationAxis::Vertical)
+            && positional_property(&rhs.property, ManipulationAxis::Vertical);
+        !(horizontal || vertical)
+    });
+
+    let mut member_plans = Vec::new();
+    for member_id in &leaves {
+        let plan = plan_direct_manipulation(&planning_scene, member_id, dx, dy)?;
+        if !plan.allowed {
+            let mut blocked = plan.blocked.clone();
+            if blocked.is_empty() {
+                blocked.push(ManipulationBlock {
+                    axis: if dx.abs() > f64::EPSILON {
+                        ManipulationAxis::Horizontal
+                    } else {
+                        ManipulationAxis::Vertical
+                    },
+                    constraint_ids: vec![],
+                    properties: vec![member_id.clone()],
+                    reason: format!(
+                        "group member {member_id} cannot preserve authored drag intent"
+                    ),
+                });
+            } else {
+                for block in &mut blocked {
+                    block.reason = format!("group member {member_id}: {}", block.reason);
+                }
+            }
+            member_plans.push(plan);
+            return Ok(DirectManipulationPlan {
+                node_id: group.id.clone(),
+                dx,
+                dy,
+                allowed: false,
+                edits: vec![],
+                constraint_edits: vec![],
+                instance_parameter_edits: vec![],
+                member_plans,
+                blocked,
+                note: "group drag blocked because one member cannot be translated safely".into(),
+            });
+        }
+        member_plans.push(plan);
+    }
+
+    let mut candidate = scene.clone();
+    for plan in &member_plans {
+        apply_movement_plan_to_candidate(&mut candidate, plan)?;
+    }
+
+    for (member_id, [x, y, width, height]) in before {
+        let node = candidate
+            .nodes
+            .iter()
+            .find(|candidate| candidate.id == member_id)
+            .ok_or_else(|| anyhow!("group member {member_id} disappeared after candidate drag"))?;
+        let after = query::bounds(node).ok_or_else(|| {
+            anyhow!("group member {member_id} became unmeasurable after candidate drag")
+        })?;
+        let expected = [x + dx, y + dy, width, height];
+        if after
+            .iter()
+            .zip(expected.iter())
+            .any(|(actual, expected)| (actual - expected).abs() > 0.0001)
+        {
+            return Ok(DirectManipulationPlan {
+                node_id: group.id.clone(),
+                dx,
+                dy,
+                allowed: false,
+                edits: vec![],
+                constraint_edits: vec![],
+                instance_parameter_edits: vec![],
+                member_plans,
+                blocked: vec![ManipulationBlock {
+                    axis: if (after[0] - expected[0]).abs() > 0.0001 {
+                        ManipulationAxis::Horizontal
+                    } else {
+                        ManipulationAxis::Vertical
+                    },
+                    constraint_ids: vec![],
+                    properties: vec![member_id.clone(), "bounds".into()],
+                    reason: format!(
+                        "group member {member_id} resolved to {after:?}, not requested {expected:?}"
+                    ),
+                }],
+                note: "group drag failed exact member-translation validation".into(),
+            });
+        }
+    }
+
+    Ok(DirectManipulationPlan {
+        node_id: group.id.clone(),
+        dx,
+        dy,
+        allowed: true,
+        edits: vec![],
+        constraint_edits: vec![],
+        instance_parameter_edits: vec![],
+        member_plans,
+        blocked: vec![],
+        note: "group drag preserves structural membership by translating every leaf member through its semantic source contract".into(),
+    })
+}
+
 pub fn plan_direct_manipulation(
     scene: &Scene,
     node_id: &str,
@@ -488,9 +717,13 @@ pub fn plan_direct_manipulation(
             edits: vec![],
             constraint_edits: vec![],
             instance_parameter_edits: vec![],
+            member_plans: vec![],
             blocked: vec![],
             note: "node is generated; edit its procedural source instead".into(),
         });
+    }
+    if node.kind == NodeKind::Group {
+        return plan_group_translation(scene, node, dx, dy);
     }
 
     let requested = [
@@ -514,6 +747,7 @@ pub fn plan_direct_manipulation(
                 edits: vec![],
                 constraint_edits: vec![],
                 instance_parameter_edits: vec![],
+                member_plans: vec![],
                 blocked,
                 note: format!(
                     "{:?} nodes do not expose a direct positional authoring property",
@@ -570,6 +804,7 @@ pub fn plan_direct_manipulation(
         } else {
             vec![]
         },
+        member_plans: vec![],
         blocked,
         note,
     })
@@ -596,6 +831,9 @@ pub fn apply_direct_manipulation_source(
         ));
     }
     let mut edited = source.to_string();
+    for member_plan in &plan.member_plans {
+        edited = apply_direct_manipulation_source(&edited, member_plan)?;
+    }
     for edit in &plan.edits {
         edited = set_source_property(&edited, &plan.node_id, &edit.property, edit.value.clone())?;
     }
@@ -633,6 +871,71 @@ pub struct DirectResizePlan {
     pub note: String,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ResizeHandle {
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+impl ResizeHandle {
+    fn moves_left(self) -> bool {
+        matches!(self, Self::Left | Self::TopLeft | Self::BottomLeft)
+    }
+
+    fn moves_right(self) -> bool {
+        matches!(self, Self::Right | Self::TopRight | Self::BottomRight)
+    }
+
+    fn moves_top(self) -> bool {
+        matches!(self, Self::Top | Self::TopLeft | Self::TopRight)
+    }
+
+    fn moves_bottom(self) -> bool {
+        matches!(self, Self::Bottom | Self::BottomLeft | Self::BottomRight)
+    }
+}
+
+impl std::str::FromStr for ResizeHandle {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "left" => Ok(Self::Left),
+            "right" => Ok(Self::Right),
+            "top" => Ok(Self::Top),
+            "bottom" => Ok(Self::Bottom),
+            "top-left" | "top_left" => Ok(Self::TopLeft),
+            "top-right" | "top_right" => Ok(Self::TopRight),
+            "bottom-left" | "bottom_left" => Ok(Self::BottomLeft),
+            "bottom-right" | "bottom_right" => Ok(Self::BottomRight),
+            _ => Err(format!(
+                "unknown resize handle {value:?}; expected left, right, top, bottom, top-left, top-right, bottom-left, or bottom-right"
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DirectHandleResizePlan {
+    pub node_id: String,
+    pub handle: ResizeHandle,
+    pub dx: f64,
+    pub dy: f64,
+    pub target_bounds: [f64; 4],
+    pub allowed: bool,
+    pub resize_plan: Option<DirectResizePlan>,
+    pub movement_plan: Option<DirectManipulationPlan>,
+    pub blocked: Vec<ManipulationBlock>,
+    pub note: String,
+}
+
 fn authored_size_edit(
     node: &Node,
     axis: ManipulationAxis,
@@ -647,6 +950,11 @@ fn authored_size_edit(
         }
         (NodeKind::Ellipse, ManipulationAxis::Horizontal) => Some(("rx", visual_delta / 2.0)),
         (NodeKind::Ellipse, ManipulationAxis::Vertical) => Some(("ry", visual_delta / 2.0)),
+        (NodeKind::Text, ManipulationAxis::Horizontal)
+            if node.authored.props.contains_key("max_width") =>
+        {
+            Some(("max_width", visual_delta))
+        }
         _ => None,
     }
 }
@@ -657,6 +965,7 @@ fn controls_size_axis(kind: &NodeKind, axis: ManipulationAxis, property: &str) -
         (NodeKind::Rect | NodeKind::Image, ManipulationAxis::Vertical) => property == "height",
         (NodeKind::Ellipse, ManipulationAxis::Horizontal) => matches!(property, "width" | "rx"),
         (NodeKind::Ellipse, ManipulationAxis::Vertical) => matches!(property, "height" | "ry"),
+        (NodeKind::Text, ManipulationAxis::Horizontal) => property == "max_width",
         _ => false,
     }
 }
@@ -738,7 +1047,49 @@ fn plan_path_resize(scene: &Scene, node: &Node, dw: f64, dh: f64) -> Result<Dire
         });
     }
     let constraints = query::constraints_for(scene, &node.id);
-    if !constraints.is_empty() {
+    let unsafe_constraints = constraints
+        .iter()
+        .copied()
+        .filter(|constraint| {
+            if constraint.lhs.node == node.id {
+                !matches!(
+                    constraint.lhs.property.as_str(),
+                    "translate_x" | "translate_y"
+                )
+            } else {
+                matches!(
+                    &constraint.rhs,
+                    ConstraintRhs::Property(reference) if reference.node == node.id
+                )
+            }
+        })
+        .collect::<Vec<_>>();
+    if !unsafe_constraints.is_empty() {
+        let ids = unsafe_constraints
+            .iter()
+            .map(|constraint| constraint.id.clone())
+            .collect::<Vec<_>>();
+        return Ok(DirectResizePlan {
+            node_id: node.id.clone(),
+            dw,
+            dh,
+            allowed: false,
+            edits: vec![],
+            constraint_edits: vec![],
+            instance_parameter_edits: vec![],
+            blocked: requested_axes
+                .iter()
+                .map(|(axis, _)| ManipulationBlock {
+                    axis: *axis,
+                    constraint_ids: ids.clone(),
+                    properties: vec!["affine_path_resize".into()],
+                    reason: "path resize only inverts authored constraints that directly control translate_x/translate_y; scale/geometry constraints and RHS dependencies remain ambiguous".into(),
+                })
+                .collect(),
+            note: "path resize blocked to preserve unsupported constraint intent".into(),
+        });
+    }
+    if node.component_origin.is_some() && !constraints.is_empty() {
         let ids = constraints
             .iter()
             .map(|constraint| constraint.id.clone())
@@ -757,33 +1108,11 @@ fn plan_path_resize(scene: &Scene, node: &Node, dw: f64, dh: f64) -> Result<Dire
                     axis: *axis,
                     constraint_ids: ids.clone(),
                     properties: vec!["affine_path_resize".into()],
-                    reason: "path resize with authored constraints is not yet safe to invert"
-                        .into(),
+                    reason: "component-owned path resize does not combine parameter inversion with authored path constraints; remove the ambiguity or edit the component explicitly".into(),
                 })
                 .collect(),
-            note: "path resize blocked to preserve authored constraint intent".into(),
-        });
-    }
-    if node.component_origin.is_some() {
-        return Ok(DirectResizePlan {
-            node_id: node.id.clone(),
-            dw,
-            dh,
-            allowed: false,
-            edits: vec![],
-            constraint_edits: vec![],
-            instance_parameter_edits: vec![],
-            blocked: requested_axes
-                .iter()
-                .map(|(axis, _)| ManipulationBlock {
-                    axis: *axis,
-                    constraint_ids: vec![],
-                    properties: vec!["affine_path_resize".into()],
-                    reason: "component path resize requires an explicit inverse parameter binding"
-                        .into(),
-                })
-                .collect(),
-            note: "path resize blocked to preserve component intent".into(),
+            note: "component path resize blocked because parameter and constraint ownership overlap"
+                .into(),
         });
     }
     let rotation = node_number(node, "rotate", node_number(node, "rotation", 0.0));
@@ -814,7 +1143,10 @@ fn plan_path_resize(scene: &Scene, node: &Node, dw: f64, dh: f64) -> Result<Dire
     let before =
         query::bounds(node).ok_or_else(|| anyhow!("path {} has no measurable bounds", node.id))?;
     let scale = node_number(node, "scale", 1.0);
+    let component_owned = node.component_origin.is_some();
     let mut edits = Vec::new();
+    let mut constraint_edits = Vec::new();
+    let mut instance_parameter_edits = Vec::new();
     for (axis, delta) in requested_axes {
         let (
             extent_index,
@@ -866,28 +1198,109 @@ fn plan_path_resize(scene: &Scene, node: &Node, dw: f64, dh: f64) -> Result<Dire
             ManipulationAxis::Horizontal => before[0],
             ManipulationAxis::Vertical => before[1],
         };
+        let current_translate = node_number(node, translate_property, 0.0);
         let next_translate = anchor - origin - (base_min - origin) * next_scale;
-        edits.push(ResizeEdit {
-            property: scale_property.into(),
-            value: Value::Number(next_scale),
-        });
-        edits.push(ResizeEdit {
-            property: translate_property.into(),
-            value: Value::Number(next_translate),
-        });
-    }
+        let translation_delta = next_translate - current_translate;
+        if component_owned {
+            let (scale_parameter, scale_block) =
+                component_parameter_edit(node, axis, scale_property, next_scale - current_scale)?;
+            if let Some(block) = scale_block {
+                return Ok(DirectResizePlan {
+                    node_id: node.id.clone(),
+                    dw,
+                    dh,
+                    allowed: false,
+                    edits: vec![],
+                    constraint_edits: vec![],
+                    instance_parameter_edits: vec![],
+                    blocked: vec![block],
+                    note: "component path resize requires an unambiguous scale parameter binding"
+                        .into(),
+                });
+            }
+            if let Some(parameter) = scale_parameter {
+                instance_parameter_edits.push(parameter);
+            }
+            let (translate_parameter, translate_block) =
+                component_parameter_edit(node, axis, translate_property, translation_delta)?;
+            if let Some(block) = translate_block {
+                return Ok(DirectResizePlan {
+                    node_id: node.id.clone(),
+                    dw,
+                    dh,
+                    allowed: false,
+                    edits: vec![],
+                    constraint_edits: vec![],
+                    instance_parameter_edits: vec![],
+                    blocked: vec![block],
+                    note: "component path resize requires an unambiguous translation parameter binding"
+                        .into(),
+                });
+            }
+            if let Some(parameter) = translate_parameter {
+                instance_parameter_edits.push(parameter);
+            }
+        } else {
+            edits.push(ResizeEdit {
+                property: scale_property.into(),
+                value: Value::Number(next_scale),
+            });
 
-    let mut candidate = node.clone();
-    for edit in &edits {
-        candidate
-            .authored
-            .props
-            .insert(edit.property.clone(), edit.value.clone());
-        if let Some(value) = edit.value.number() {
-            candidate.derived.props.insert(edit.property.clone(), value);
+            let (axis_constraint_edits, block) = axis_constraint_resolution(
+                scene,
+                node,
+                axis,
+                translate_property,
+                translation_delta,
+            )?;
+            if let Some(block) = block {
+                return Ok(DirectResizePlan {
+                    node_id: node.id.clone(),
+                    dw,
+                    dh,
+                    allowed: false,
+                    edits: vec![],
+                    constraint_edits: vec![],
+                    instance_parameter_edits: vec![],
+                    blocked: vec![block],
+                    note: "path resize blocked because the required affine translation cannot preserve authored constraints".into(),
+                });
+            }
+            if axis_constraint_edits.is_empty() {
+                edits.push(ResizeEdit {
+                    property: translate_property.into(),
+                    value: Value::Number(next_translate),
+                });
+            } else {
+                constraint_edits.extend(axis_constraint_edits);
+            }
         }
     }
-    let after = query::bounds(&candidate)
+
+    let plan = DirectResizePlan {
+        node_id: node.id.clone(),
+        dw,
+        dh,
+        allowed: true,
+        edits,
+        constraint_edits,
+        instance_parameter_edits,
+        blocked: vec![],
+        note: if component_owned {
+            "component path resize preserves d geometry by inverting explicit affine parameter bindings"
+                .into()
+        } else {
+            "path resize preserves d geometry through affine scale plus source-authoritative translation or relation-offset edits".into()
+        },
+    };
+    let mut candidate_scene = scene.clone();
+    apply_resize_plan_to_candidate(&mut candidate_scene, &plan)?;
+    let candidate = candidate_scene
+        .nodes
+        .iter()
+        .find(|candidate| candidate.id == node.id)
+        .ok_or_else(|| anyhow!("path {} disappeared after resize", node.id))?;
+    let after = query::bounds(candidate)
         .ok_or_else(|| anyhow!("path {} became unmeasurable after resize", node.id))?;
     if (after[0] - before[0]).abs() > 0.0001
         || (after[1] - before[1]).abs() > 0.0001
@@ -899,17 +1312,7 @@ fn plan_path_resize(scene: &Scene, node: &Node, dw: f64, dh: f64) -> Result<Dire
             node.id
         ));
     }
-    Ok(DirectResizePlan {
-        node_id: node.id.clone(),
-        dw,
-        dh,
-        allowed: true,
-        edits,
-        constraint_edits: vec![],
-        instance_parameter_edits: vec![],
-        blocked: vec![],
-        note: "path resize preserves d geometry through explicit affine scale/translation".into(),
-    })
+    Ok(plan)
 }
 
 fn size_constraint_delta(
@@ -925,6 +1328,7 @@ fn size_constraint_delta(
         | (NodeKind::Ellipse, ManipulationAxis::Vertical, "height") => Some(visual_delta),
         (NodeKind::Ellipse, ManipulationAxis::Horizontal, "rx")
         | (NodeKind::Ellipse, ManipulationAxis::Vertical, "ry") => Some(visual_delta / 2.0),
+        (NodeKind::Text, ManipulationAxis::Horizontal, "max_width") => Some(visual_delta),
         _ => None,
     }
 }
@@ -937,6 +1341,7 @@ fn size_axis_ref(node: &Node, axis: ManipulationAxis) -> Option<PropertyRef> {
         (NodeKind::Rect | NodeKind::Image | NodeKind::Ellipse, ManipulationAxis::Vertical) => {
             "height"
         }
+        (NodeKind::Text, ManipulationAxis::Horizontal) => "max_width",
         _ => return None,
     };
     Some(PropertyRef {
@@ -1187,6 +1592,49 @@ pub fn plan_direct_resize(
     if node.kind == NodeKind::Path {
         return plan_path_resize(scene, node, dw, dh);
     }
+    if node.kind == NodeKind::Text {
+        let mut text_blocks = Vec::new();
+        if dh.abs() > f64::EPSILON {
+            text_blocks.push(ManipulationBlock {
+                axis: ManipulationAxis::Vertical,
+                constraint_ids: vec![],
+                properties: vec!["line_height".into(), "size".into()],
+                reason: "vertical text resize is ambiguous between font scaling and line-spacing changes; Glyph only resizes an explicit wrap frame horizontally".into(),
+            });
+        }
+        if dw.abs() > f64::EPSILON && !node.authored.props.contains_key("max_width") {
+            text_blocks.push(ManipulationBlock {
+                axis: ManipulationAxis::Horizontal,
+                constraint_ids: vec![],
+                properties: vec!["max_width".into()],
+                reason: "point text has no authored max_width frame; add max_width before resizing text width".into(),
+            });
+        }
+        let rotation = node_number(node, "rotate", node_number(node, "rotation", 0.0));
+        let scale = node_number(node, "scale", 1.0);
+        let scale_x = node_number(node, "scale_x", scale);
+        if dw.abs() > f64::EPSILON && (rotation.abs() > 0.0001 || (scale_x - 1.0).abs() > 0.0001) {
+            text_blocks.push(ManipulationBlock {
+                axis: ManipulationAxis::Horizontal,
+                constraint_ids: vec![],
+                properties: vec!["max_width".into(), "scale_x".into(), "rotate".into()],
+                reason: "text frame resize through an authored affine transform is not yet invertible without changing visual-space semantics".into(),
+            });
+        }
+        if !text_blocks.is_empty() {
+            return Ok(DirectResizePlan {
+                node_id: node.id.clone(),
+                dw,
+                dh,
+                allowed: false,
+                edits: vec![],
+                constraint_edits: vec![],
+                instance_parameter_edits: vec![],
+                blocked: text_blocks,
+                note: "text resize blocked to preserve explicit text-layout intent".into(),
+            });
+        }
+    }
     let requested = [
         (ManipulationAxis::Horizontal, dw),
         (ManipulationAxis::Vertical, dh),
@@ -1312,6 +1760,319 @@ pub fn apply_direct_resize_source(source: &str, plan: &DirectResizePlan) -> Resu
             &edit.parameter,
             edit.next_value.clone(),
         )?;
+    }
+    Ok(edited)
+}
+
+fn target_bounds_for_handle(
+    before: [f64; 4],
+    handle: ResizeHandle,
+    dx: f64,
+    dy: f64,
+) -> Result<[f64; 4]> {
+    let [mut x, mut y, mut width, mut height] = before;
+    if handle.moves_left() {
+        x += dx;
+        width -= dx;
+    } else if handle.moves_right() {
+        width += dx;
+    }
+    if handle.moves_top() {
+        y += dy;
+        height -= dy;
+    } else if handle.moves_bottom() {
+        height += dy;
+    }
+    if ![x, y, width, height].iter().all(|value| value.is_finite()) {
+        return Err(anyhow!("resize handle produced non-finite target bounds"));
+    }
+    if width <= 0.0 || height <= 0.0 {
+        return Err(anyhow!(
+            "resize handle would make visual bounds non-positive ({width} × {height})"
+        ));
+    }
+    Ok([x, y, width, height])
+}
+
+fn set_candidate_component_target(
+    scene: &mut Scene,
+    node_id: &str,
+    edit: &ComponentParameterEdit,
+) -> Result<()> {
+    let node = scene
+        .nodes
+        .iter_mut()
+        .find(|node| node.id == node_id)
+        .ok_or_else(|| anyhow!("candidate node {node_id} disappeared"))?;
+    let origin = node
+        .component_origin
+        .as_ref()
+        .ok_or_else(|| anyhow!("candidate component node {node_id} lost origin metadata"))?;
+    let instance_scale = origin.scale;
+    let offset_x = origin.offset_x;
+    let offset_y = origin.offset_y;
+    let local = edit
+        .next_value
+        .number()
+        .ok_or_else(|| anyhow!("component parameter {} is not numeric", edit.parameter))?;
+    let global = match edit.target_property.as_str() {
+        "x" | "cx" => local * instance_scale + offset_x,
+        "y" | "cy" => local * instance_scale + offset_y,
+        "translate_x" if node.kind == NodeKind::Path => {
+            let local_origin = node_number(node, "origin_x", 0.0);
+            offset_x + local * instance_scale + (instance_scale - 1.0) * local_origin
+        }
+        "translate_y" if node.kind == NodeKind::Path => {
+            let local_origin = node_number(node, "origin_y", 0.0);
+            offset_y + local * instance_scale + (instance_scale - 1.0) * local_origin
+        }
+        "scale" | "scale_x" | "scale_y" if node.kind == NodeKind::Path => local * instance_scale,
+        "origin_x" | "origin_y" if node.kind == NodeKind::Path => local,
+        _ if property_dimension(&edit.target_property) == Some(Dimension::Length) => {
+            local * instance_scale
+        }
+        _ => local,
+    };
+    let value = match node.authored.props.get(&edit.target_property) {
+        Some(Value::Quantity(quantity)) => Value::Quantity(Quantity {
+            value: global,
+            unit: quantity.unit,
+        }),
+        _ => Value::Number(global),
+    };
+    node.authored
+        .props
+        .insert(edit.target_property.clone(), value);
+    Ok(())
+}
+
+fn apply_resize_plan_to_candidate(scene: &mut Scene, plan: &DirectResizePlan) -> Result<()> {
+    if !plan.allowed {
+        return Err(anyhow!(
+            "cannot apply blocked resize plan to candidate scene"
+        ));
+    }
+    {
+        let node = scene
+            .nodes
+            .iter_mut()
+            .find(|node| node.id == plan.node_id)
+            .ok_or_else(|| anyhow!("candidate node {} disappeared", plan.node_id))?;
+        for edit in &plan.edits {
+            node.authored
+                .props
+                .insert(edit.property.clone(), edit.value.clone());
+        }
+    }
+    for edit in &plan.constraint_edits {
+        let constraint = scene
+            .constraints
+            .iter_mut()
+            .find(|constraint| constraint.source_order == edit.source_order)
+            .ok_or_else(|| anyhow!("{} disappeared from candidate scene", edit.constraint_id))?;
+        constraint.offset = edit.next_offset;
+        constraint.offset_unit = edit.unit;
+    }
+    for edit in &plan.instance_parameter_edits {
+        set_candidate_component_target(scene, &plan.node_id, edit)?;
+    }
+    let report = solve_scene(scene);
+    if !report.required_conflicts.is_empty() || !report.unresolved.is_empty() {
+        return Err(anyhow!(
+            "candidate resize introduced unresolved or required constraint conflicts"
+        ));
+    }
+    Ok(())
+}
+
+fn apply_movement_plan_to_candidate(
+    scene: &mut Scene,
+    plan: &DirectManipulationPlan,
+) -> Result<()> {
+    if !plan.allowed {
+        return Err(anyhow!(
+            "cannot apply blocked movement plan to candidate scene"
+        ));
+    }
+    {
+        let node = scene
+            .nodes
+            .iter_mut()
+            .find(|node| node.id == plan.node_id)
+            .ok_or_else(|| anyhow!("candidate node {} disappeared", plan.node_id))?;
+        for edit in &plan.edits {
+            node.authored
+                .props
+                .insert(edit.property.clone(), edit.value.clone());
+        }
+    }
+    for edit in &plan.constraint_edits {
+        let constraint = scene
+            .constraints
+            .iter_mut()
+            .find(|constraint| constraint.source_order == edit.source_order)
+            .ok_or_else(|| anyhow!("{} disappeared from candidate scene", edit.constraint_id))?;
+        constraint.offset = edit.next_offset;
+        constraint.offset_unit = edit.unit;
+    }
+    for edit in &plan.instance_parameter_edits {
+        set_candidate_component_target(scene, &plan.node_id, edit)?;
+    }
+    let report = solve_scene(scene);
+    if !report.required_conflicts.is_empty() || !report.unresolved.is_empty() {
+        return Err(anyhow!(
+            "candidate movement introduced unresolved or required constraint conflicts"
+        ));
+    }
+    Ok(())
+}
+
+pub fn plan_direct_resize_from_handle(
+    scene: &Scene,
+    node_id: &str,
+    handle: ResizeHandle,
+    dx: f64,
+    dy: f64,
+) -> Result<DirectHandleResizePlan> {
+    let node = scene
+        .nodes
+        .iter()
+        .find(|node| node.id == node_id)
+        .ok_or_else(|| anyhow!("node {node_id} not found"))?;
+    let before = query::bounds(node)
+        .ok_or_else(|| anyhow!("node {node_id} has no measurable bounds for handle resize"))?;
+    let target = target_bounds_for_handle(before, handle, dx, dy)?;
+    let dw = target[2] - before[2];
+    let dh = target[3] - before[3];
+    let size_plan = plan_direct_resize(scene, node_id, dw, dh)?;
+    if !size_plan.allowed {
+        return Ok(DirectHandleResizePlan {
+            node_id: node_id.into(),
+            handle,
+            dx,
+            dy,
+            target_bounds: target,
+            allowed: false,
+            blocked: size_plan.blocked.clone(),
+            resize_plan: Some(size_plan),
+            movement_plan: None,
+            note: "handle resize blocked while changing semantic size".into(),
+        });
+    }
+
+    let mut candidate = scene.clone();
+    apply_resize_plan_to_candidate(&mut candidate, &size_plan)?;
+    let resized = candidate
+        .nodes
+        .iter()
+        .find(|node| node.id == node_id)
+        .and_then(query::bounds)
+        .ok_or_else(|| anyhow!("node {node_id} became unmeasurable after semantic resize"))?;
+    let move_dx = target[0] - resized[0];
+    let move_dy = target[1] - resized[1];
+    let movement_plan = if move_dx.abs() > 0.0001 || move_dy.abs() > 0.0001 {
+        let plan = plan_direct_manipulation(&candidate, node_id, move_dx, move_dy)?;
+        if !plan.allowed {
+            return Ok(DirectHandleResizePlan {
+                node_id: node_id.into(),
+                handle,
+                dx,
+                dy,
+                target_bounds: target,
+                allowed: false,
+                blocked: plan.blocked.clone(),
+                resize_plan: Some(size_plan),
+                movement_plan: Some(plan),
+                note: "handle resize blocked while preserving the opposite-edge anchor".into(),
+            });
+        }
+        apply_movement_plan_to_candidate(&mut candidate, &plan)?;
+        Some(plan)
+    } else {
+        None
+    };
+
+    let final_bounds = candidate
+        .nodes
+        .iter()
+        .find(|node| node.id == node_id)
+        .and_then(query::bounds)
+        .ok_or_else(|| anyhow!("node {node_id} became unmeasurable after handle resize"))?;
+    let controls_horizontal = handle.moves_left() || handle.moves_right();
+    let controls_vertical = handle.moves_top() || handle.moves_bottom();
+    let horizontal_mismatch = controls_horizontal
+        && ((final_bounds[0] - target[0]).abs() > 0.0001
+            || (final_bounds[2] - target[2]).abs() > 0.0001);
+    let vertical_mismatch = controls_vertical
+        && ((final_bounds[1] - target[1]).abs() > 0.0001
+            || (final_bounds[3] - target[3]).abs() > 0.0001);
+    if horizontal_mismatch || vertical_mismatch {
+        return Ok(DirectHandleResizePlan {
+            node_id: node_id.into(),
+            handle,
+            dx,
+            dy,
+            target_bounds: target,
+            allowed: false,
+            resize_plan: Some(size_plan),
+            movement_plan,
+            blocked: vec![ManipulationBlock {
+                axis: if horizontal_mismatch {
+                    ManipulationAxis::Horizontal
+                } else {
+                    ManipulationAxis::Vertical
+                },
+                constraint_ids: vec![],
+                properties: vec!["bounds".into()],
+                reason: format!(
+                    "candidate handle resize resolved to {:?}, not requested {:?}",
+                    final_bounds, target
+                ),
+            }],
+            note: "handle resize failed exact opposite-edge anchor validation".into(),
+        });
+    }
+    let mut resolved_target = target;
+    if !controls_horizontal {
+        resolved_target[0] = final_bounds[0];
+        resolved_target[2] = final_bounds[2];
+    }
+    if !controls_vertical {
+        resolved_target[1] = final_bounds[1];
+        resolved_target[3] = final_bounds[3];
+    }
+
+    Ok(DirectHandleResizePlan {
+        node_id: node_id.into(),
+        handle,
+        dx,
+        dy,
+        target_bounds: resolved_target,
+        allowed: true,
+        resize_plan: Some(size_plan),
+        movement_plan,
+        blocked: vec![],
+        note: "handle resize preserves explicit edge/corner anchor semantics".into(),
+    })
+}
+
+pub fn apply_direct_handle_resize_source(
+    source: &str,
+    plan: &DirectHandleResizePlan,
+) -> Result<String> {
+    if !plan.allowed {
+        return Err(anyhow!(
+            "direct handle resize of {} is blocked: {}",
+            plan.node_id,
+            plan.note
+        ));
+    }
+    let mut edited = source.to_string();
+    if let Some(resize_plan) = &plan.resize_plan {
+        edited = apply_direct_resize_source(&edited, resize_plan)?;
+    }
+    if let Some(movement_plan) = &plan.movement_plan {
+        edited = apply_direct_manipulation_source(&edited, movement_plan)?;
     }
     Ok(edited)
 }

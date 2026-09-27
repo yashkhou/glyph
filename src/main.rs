@@ -1,14 +1,16 @@
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand};
 use glyph::{
-    ConstraintRhs, PatchOperation, PropertyRef, Relation, Scene, Strength, Unit, Value,
-    add_source_constraint, apply_direct_manipulation_source, apply_direct_resize_source,
-    apply_transaction, build_display_list,
+    ConstraintRhs, PatchOperation, PropertyRef, Relation, ResizeHandle, Scene, Strength, Unit,
+    Value, accessibility_report, add_source_constraint, apply_direct_handle_resize_source,
+    apply_direct_manipulation_source, apply_direct_resize_source, apply_transaction,
+    build_display_list,
     diff::diff_scenes,
-    evaluate_assertions, load_project_scene, plan_direct_manipulation, plan_direct_resize, query,
-    remove_source_constraint, render_svg, renderer_conformance_report, sample_motion,
-    scene_in_state, set_source_constraint_offset, set_source_constraint_relation,
-    set_source_constraint_strength, set_source_property, solve_scene, target_strategy_report,
+    evaluate_assertions, load_project_scene, plan_direct_manipulation, plan_direct_resize,
+    plan_direct_resize_from_handle, query, remove_source_constraint, render_svg,
+    renderer_conformance_report, sample_motion, scene_in_state, set_source_constraint_offset,
+    set_source_constraint_relation, set_source_constraint_strength, set_source_property,
+    solve_scene, target_strategy_report,
     vision::{default_vision_helper, import_image_to_glyph},
 };
 use serde::Deserialize;
@@ -193,6 +195,26 @@ enum Command {
         #[arg(short, long)]
         output: PathBuf,
     },
+    ResizeHandlePlan {
+        input: PathBuf,
+        node: String,
+        handle: String,
+        #[arg(allow_hyphen_values = true)]
+        dx: f64,
+        #[arg(allow_hyphen_values = true)]
+        dy: f64,
+    },
+    SourceResizeHandle {
+        input: PathBuf,
+        node: String,
+        handle: String,
+        #[arg(allow_hyphen_values = true)]
+        dx: f64,
+        #[arg(allow_hyphen_values = true)]
+        dy: f64,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
     DisplayList {
         input: PathBuf,
         #[arg(short, long)]
@@ -202,6 +224,9 @@ enum Command {
         input: PathBuf,
     },
     Conformance {
+        input: PathBuf,
+    },
+    Accessibility {
         input: PathBuf,
     },
     Targets {
@@ -334,10 +359,10 @@ fn main() -> Result<()> {
             "constraints":["==",">=","<=","required","strong","medium","weak"],
             "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
             "runtime":["assertions","named-states","sampled-motion","deterministic-text-layout"],
-            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","display-list","object-map","renderer-conformance","target-strategy","bounded-image-import"],
-            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","renderer-conformance-json","target-strategy-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import"],
+            "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json"],
             "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source"],
-            "status":{"vision":"bounded Apple Vision OCR + rectangle importer v1; not arbitrary photo reconstruction","motion":"declarative sampled motion v1","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; compatible equality offsets co-edit through candidate validation, inequalities remain feasibility guards, component inverse edits require unambiguous typed bindings, and bottom-right semantic resize supports rect/image/ellipse plus unrotated authored paths through affine scale/translation without rewriting path geometry; unsafe intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
+            "status":{"vision":"bounded Apple Vision OCR + rectangle importer v1; not arbitrary photo reconstruction","motion":"declarative sampled motion v1","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove source edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw, SwiftUI/Web Canvas remain strategy-only until emitters exist","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
             let mut scene = load_project_scene(&input)?;
@@ -665,6 +690,38 @@ fn main() -> Result<()> {
             fs::write(&output, edited)?;
             print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"plan":plan}))
         }
+        Command::ResizeHandlePlan {
+            input,
+            node,
+            handle,
+            dx,
+            dy,
+        } => {
+            let scene = load_scene(&input)?;
+            let handle = handle.parse::<ResizeHandle>().map_err(anyhow::Error::msg)?;
+            print_json(&plan_direct_resize_from_handle(
+                &scene, &node, handle, dx, dy,
+            )?)
+        }
+        Command::SourceResizeHandle {
+            input,
+            node,
+            handle,
+            dx,
+            dy,
+            output,
+        } => {
+            if input.extension().and_then(|x| x.to_str()) != Some("glyph") {
+                anyhow::bail!("source-resize-handle requires a .glyph source input");
+            }
+            let scene = parse_file(&input)?;
+            let handle = handle.parse::<ResizeHandle>().map_err(anyhow::Error::msg)?;
+            let plan = plan_direct_resize_from_handle(&scene, &node, handle, dx, dy)?;
+            let source = fs::read_to_string(&input)?;
+            let edited = apply_direct_handle_resize_source(&source, &plan)?;
+            fs::write(&output, edited)?;
+            print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"plan":plan}))
+        }
         Command::DisplayList { input, output } => {
             let scene = load_scene(&input)?;
             let display = build_display_list(&scene);
@@ -685,6 +742,10 @@ fn main() -> Result<()> {
         Command::Conformance { input } => {
             let scene = load_scene(&input)?;
             print_json(&renderer_conformance_report(&scene))
+        }
+        Command::Accessibility { input } => {
+            let scene = load_scene(&input)?;
+            print_json(&accessibility_report(&scene))
         }
         Command::Targets { input } => {
             let scene = load_scene(&input)?;

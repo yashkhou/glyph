@@ -71,6 +71,8 @@ pub struct Node {
     pub name: String,
     pub kind: NodeKind,
     pub roles: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub members: Vec<String>,
     pub authored: AuthoredNode,
     pub derived: DerivedNode,
     pub provenance: Provenance,
@@ -321,14 +323,14 @@ pub fn property_value_type(property: &str) -> Option<ValueType> {
         "rotation" | "rotate" | "angle" => ValueType::Angle,
         "opacity" => ValueType::Opacity,
         "depth" | "z" => ValueType::Depth,
-        "scale" | "scale_x" | "scale_y" | "scale_step" | "line_count" | "glyph_count" => {
-            ValueType::Number
-        }
+        "scale" | "scale_x" | "scale_y" | "scale_step" | "line_count" | "glyph_count"
+        | "reading_order" => ValueType::Number,
         "fill" | "stroke" | "background" | "color" => ValueType::Color,
         "d" | "path" => ValueType::Path,
         "src" => ValueType::Image,
         "fit" | "clip" | "mask" | "fill_paint" | "stroke_paint" | "weight" | "font_style"
-        | "ligatures" => ValueType::Text,
+        | "ligatures" | "a11y_label" | "a11y_role" | "a11y_hint" | "a11y_labelled_by"
+        | "a11y_hidden" | "a11y_live" | "interactive" => ValueType::Text,
         "font" => ValueType::Font,
         "content" => ValueType::Text,
         _ => return None,
@@ -354,6 +356,36 @@ pub fn validate_value_for_property(property: &str, value: &Value) -> Result<(), 
         if !matches!(mode, "none" | "standard" | "all") {
             return Err(format!(
                 "property ligatures expects none, standard, or all; got {mode:?}"
+            ));
+        }
+    }
+    if matches!(property, "a11y_hidden" | "interactive") {
+        let Some(flag) = value.text() else {
+            return Err(format!("property {property} expects true or false"));
+        };
+        if !matches!(flag, "true" | "false") {
+            return Err(format!(
+                "property {property} expects true or false; got {flag:?}"
+            ));
+        }
+    }
+    if property == "a11y_live" {
+        let Some(mode) = value.text() else {
+            return Err("property a11y_live expects off, polite, or assertive".into());
+        };
+        if !matches!(mode, "off" | "polite" | "assertive") {
+            return Err(format!(
+                "property a11y_live expects off, polite, or assertive; got {mode:?}"
+            ));
+        }
+    }
+    if property == "reading_order" {
+        let Some(order) = value.number() else {
+            return Err("property reading_order expects a non-negative integer".into());
+        };
+        if !order.is_finite() || order < 0.0 || order.fract().abs() > f64::EPSILON {
+            return Err(format!(
+                "property reading_order expects a non-negative integer; got {order}"
             ));
         }
     }

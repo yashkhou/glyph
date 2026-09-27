@@ -60,13 +60,13 @@ Working today:
 - Dimensional units/types, source/GSIR versioning + migration, typed components/slots/variants/overrides, and local project imports are implemented.
 - Canonical graphics now include image nodes, affine transforms, resolved clip/mask references, and typed linear/radial paints in display-list schema v3.
 - Direct manipulation now candidate-validates compatible multi-constraint intent: equality offsets can co-edit, inequalities stay feasibility guards, and unsafe/newly-relaxed intent fails closed.
-- Semantic resize supports rect/image/ellipse and unrotated authored paths; path resize uses affine scale/translation and preserves the authored SVG `d`. Studio exposes bottom-right handles for rect/image/ellipse/path.
+- Semantic resize supports rect/image/ellipse plus explicit text wrap frames; Studio exposes edge/corner handles with opposite-anchor preservation. Structural groups own validated membership and translate leaf members through semantic plans. Unrotated paths preserve authored `d`, can co-edit compatible translate constraints, and component-owned paths invert explicit affine parameter bindings when unambiguous.
 
 Live `glyph capabilities` reports GSIR canonical, source schema v1 / GSIR schema v2, Cassowary-class weighted linear solver v1, display-list/object-map v3, typed paints/transforms/clips/masks, CoreText-backed text semantics, source-backed constraint/direct-manipulation APIs, Studio v0.1, sampled motion v1, visual diff v1, and bounded Apple Vision import v1.
 ## Verified evidence at handoff
 
-- Rust integration suite: **92/92 passing**.
-- Native Studio integration suite: **4/4 passing**.
+- Rust integration suite: **110/110 passing**.
+- Native Studio integration suite: **7/7 passing**.
 - `cargo fmt --check`: passing.
 - Release build: passing.
 - Full `./scripts/verify.sh`: passing, including source-backed free/relation/component/path drag, rect/component/path resize, constraint editing, SVG/PNG/PDF export and Studio integration tests.
@@ -94,7 +94,7 @@ Use these percentages only as planning estimates, not test scores:
 - Full original research vision: **~62% complete**.
 - Polished public Glyph 1.0 product: **~50–55% complete**.
 
-The central architecture is validated. Most remaining engineering weight is in language hardening, richer graphics, production typography, full Studio direct manipulation, broader inverse graphics/Image→Glyph, motion, accessibility, modules/tooling and production release hardening.
+The central architecture is validated. Direct-manipulation coverage is materially broader and first-class accessibility semantics/auditing are implemented. Most remaining engineering weight is now in rotated/ambiguous inverse graphics, deeper Studio hierarchy/component operations, broader Image→Glyph, motion, LSP/tooling, packaging/assets, fuzzing/performance/security and release hardening.
 ## What to build next — dependency order
 
 Do not jump straight to arbitrary photo reconstruction or cosmetic Studio features. Continue in this order unless a newly discovered blocker changes the dependency graph.
@@ -167,10 +167,10 @@ Do not "correct" the repo by reverting newer implementation to match stale prose
 1. Read the five files listed in the bootstrap prompt.
 2. Run `git status` and inspect the existing working tree; preserve it.
 3. Run live `glyph capabilities`.
-4. Run `cargo fmt --check` and `cargo test`; expected baseline at this handoff is 92 passing Rust integration tests, plus 4 Studio integration tests through the full verification script.
+4. Run `cargo fmt --check` and `cargo test`; expected baseline at this handoff is 110 passing Rust integration tests, plus 7 Studio integration tests through the full verification script.
 5. Build the release binary if source has changed.
 6. Create a non-destructive Commander Git snapshot/checkpoint before the next substantive implementation block.
-7. Continue the remaining **Phase 3 Studio round-trip work** in dependency order: text-specific semantic resize and multi-edge handles are the next direct-manipulation gaps; structural group membership/translation and broader component/path inverse cases follow. Do not reopen completed Phase 1/2 work unless a real regression requires it.
+7. Continue the remaining roadmap from the current frontier: rotated/ambiguous inverse-graphics cases and deeper hierarchy/component Studio operations first, then LSP/autocomplete/diagnostics, package/assets/project hardening, fuzzing/performance/security/release work, and only then the still-gated semantic SwiftUI/Web Canvas emitters unless a dependency changes. Do not reopen completed language/rendering/direct-manipulation work unless a real regression requires it.
 8. After each meaningful subsystem, rerun the unchanged core gate and relevant targeted benchmark. Do not weaken a benchmark because a new feature fails it.
 
 ## Useful paths

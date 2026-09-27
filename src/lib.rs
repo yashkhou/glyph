@@ -1,3 +1,4 @@
+pub mod accessibility;
 pub mod bridge;
 pub mod conformance;
 pub mod diff;
@@ -18,20 +19,24 @@ pub mod targets;
 pub mod text_layout;
 pub mod vision;
 
+pub use accessibility::{
+    AccessibilityIssue, AccessibilityReport, AccessibilitySeverity, accessibility_report,
+};
 pub use bridge::commander_draw_document;
 pub use conformance::{
     BackendConformance, ConformanceIssue, ConformanceStatus, RendererConformanceReport,
     renderer_conformance_report,
 };
 pub use display_list::{
-    DisplayCanvas, DisplayItem, DisplayList, DisplayPrimitive, DisplayStyle, DisplayTransform,
-    ObjectRecord, build_display_list,
+    DisplayAccessibility, DisplayCanvas, DisplayItem, DisplayList, DisplayPrimitive, DisplayStyle,
+    DisplayTransform, ObjectRecord, build_display_list,
 };
 pub use manipulation::{
-    ComponentParameterEdit, ConstraintOffsetEdit, DirectManipulationPlan, DirectResizePlan,
-    ManipulationAxis, ManipulationBlock, ManipulationEdit, ResizeEdit,
-    apply_direct_manipulation_source, apply_direct_resize_source, plan_direct_manipulation,
-    plan_direct_resize,
+    ComponentParameterEdit, ConstraintOffsetEdit, DirectHandleResizePlan, DirectManipulationPlan,
+    DirectResizePlan, ManipulationAxis, ManipulationBlock, ManipulationEdit, ResizeEdit,
+    ResizeHandle, apply_direct_handle_resize_source, apply_direct_manipulation_source,
+    apply_direct_resize_source, plan_direct_manipulation, plan_direct_resize,
+    plan_direct_resize_from_handle,
 };
 pub use migration::{MigrationReport, load_gsir_str, migrate_gsir_value};
 pub use model::*;

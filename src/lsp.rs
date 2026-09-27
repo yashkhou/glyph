@@ -1,8 +1,9 @@
 use crate::language_service::{
-    DiagnosticSeverity, LanguageDiagnostic, TextPosition, TextRange, byte_offset_at_position,
-    code_actions, complete_source, definition_at, diagnose_project_source, diagnose_source,
-    node_symbol_at_position, project_definition_at, project_references_at, references_at,
-    rename_node_at, rename_project_symbol_at,
+    DiagnosticSeverity, LanguageDiagnostic, SemanticTokenKind, TextPosition, TextRange,
+    byte_offset_at_position, code_actions, complete_source, definition_at, diagnose_project_source,
+    diagnose_source, node_symbol_at_position, project_definition_at, project_hover_at,
+    project_references_at, references_at, rename_node_at, rename_project_symbol_at,
+    semantic_tokens,
 };
 use anyhow::{Context, Result, anyhow};
 use serde_json::{Value, json};
@@ -333,6 +334,77 @@ fn rename_result(
     Ok(project_workspace_edit(plan.edits))
 }
 
+fn hover_result(
+    documents: &BTreeMap<String, String>,
+    uri: &str,
+    position: TextPosition,
+) -> Result<Value, String> {
+    let source = documents
+        .get(uri)
+        .ok_or_else(|| "document is not open".to_string())?;
+    let hover = if let Some(local) = crate::language_service::hover_at(source, position) {
+        Some(local)
+    } else if let Some(path) = file_uri_path(uri).filter(|path| path.exists()) {
+        project_hover_at(&path, source, position, &document_overlays(documents))?
+    } else {
+        None
+    };
+    Ok(hover
+        .map(|hover| {
+            json!({
+                "contents":{"kind":"markdown","value":hover.contents},
+                "range":hover.range
+            })
+        })
+        .unwrap_or(Value::Null))
+}
+
+fn semantic_token_type(kind: SemanticTokenKind) -> u32 {
+    match kind {
+        SemanticTokenKind::Keyword => 0,
+        SemanticTokenKind::Class => 1,
+        SemanticTokenKind::Type => 2,
+        SemanticTokenKind::Variable => 3,
+        SemanticTokenKind::Property => 4,
+        SemanticTokenKind::Parameter => 5,
+        SemanticTokenKind::Namespace => 6,
+    }
+}
+
+fn semantic_tokens_result(source: &str) -> Value {
+    let mut previous_line = 0u32;
+    let mut previous_start = 0u32;
+    let mut data = Vec::<u32>::new();
+    for token in semantic_tokens(source) {
+        let line = token.range.start.line;
+        let start = token.range.start.character;
+        let delta_line = line - previous_line;
+        let delta_start = if delta_line == 0 {
+            start - previous_start
+        } else {
+            start
+        };
+        let length = token
+            .range
+            .end
+            .character
+            .saturating_sub(token.range.start.character);
+        if length == 0 || token.range.end.line != line {
+            continue;
+        }
+        data.extend([
+            delta_line,
+            delta_start,
+            length,
+            semantic_token_type(token.kind),
+            0,
+        ]);
+        previous_line = line;
+        previous_start = start;
+    }
+    json!({"data":data})
+}
+
 pub fn run_stdio() -> Result<()> {
     let stdin = io::stdin();
     let stdout = io::stdout();
@@ -357,6 +429,14 @@ pub fn run_stdio() -> Result<()> {
                                     "completionProvider": {"resolveProvider":false,"triggerCharacters":["."]},
                                     "definitionProvider": true,
                                     "referencesProvider": true,
+                                    "hoverProvider": true,
+                                    "semanticTokensProvider": {
+                                        "legend": {
+                                            "tokenTypes":["keyword","class","type","variable","property","parameter","namespace"],
+                                            "tokenModifiers":[]
+                                        },
+                                        "full": true
+                                    },
                                     "renameProvider": {"prepareProvider":true},
                                     "codeActionProvider": {"codeActionKinds":["quickfix"]}
                                 },
@@ -427,6 +507,28 @@ pub fn run_stdio() -> Result<()> {
                         .get(uri)
                         .map(|source| completion_result(source, &params))
                         .unwrap_or_else(|| json!({"isIncomplete":false,"items":[]}));
+                    write_message(&mut writer, &response(id, result))?;
+                }
+            }
+            "textDocument/hover" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let position = position_from_json(&params["position"]);
+                    match hover_result(&documents, uri, position) {
+                        Ok(result) => write_message(&mut writer, &response(id, result))?,
+                        Err(message) => {
+                            write_message(&mut writer, &error_response(id, -32602, &message))?
+                        }
+                    }
+                }
+            }
+            "textDocument/semanticTokens/full" => {
+                if let Some(id) = id {
+                    let uri = text_document_uri(&params).unwrap_or_default();
+                    let result = documents
+                        .get(uri)
+                        .map(|source| semantic_tokens_result(source))
+                        .unwrap_or_else(|| json!({"data":[]}));
                     write_message(&mut writer, &response(id, result))?;
                 }
             }
@@ -600,5 +702,21 @@ scene "Main" {
         assert_eq!(changes.len(), 2, "{rename}");
         assert_eq!(changes[&library_uri][0]["newText"], "chip");
         assert_eq!(changes[&main_uri][0]["newText"], "ui/chip");
+
+        let hover = hover_result(&documents, &main_uri, position).unwrap();
+        assert!(
+            hover["contents"]["value"]
+                .as_str()
+                .unwrap()
+                .contains("**component** `ui/badge`"),
+            "{hover}"
+        );
+        let semantic = semantic_tokens_result(main_source);
+        assert!(
+            semantic["data"]
+                .as_array()
+                .is_some_and(|data| !data.is_empty()),
+            "{semantic}"
+        );
     }
 }

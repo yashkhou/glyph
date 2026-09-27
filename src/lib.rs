@@ -39,12 +39,13 @@ pub use display_list::{
     DisplayTransform, ObjectRecord, build_display_list,
 };
 pub use language_service::{
-    CompletionItem, DiagnosticSeverity, LanguageCodeAction, LanguageDiagnostic, ProjectRenamePlan,
-    ProjectSourceTextEdit, ProjectSymbolKind, ProjectSymbolLocation, RenamePlan, SourceTextEdit,
-    SymbolReference, TextPosition, TextRange, apply_source_text_edits, code_actions,
-    complete_source, definition_at, diagnose_project_source, diagnose_source,
-    project_definition_at, project_references_at, references_at, rename_node_at,
-    rename_project_symbol_at,
+    CompletionItem, DiagnosticSeverity, LanguageCodeAction, LanguageDiagnostic, LanguageHover,
+    LanguageSemanticToken, ProjectRenamePlan, ProjectSourceTextEdit, ProjectSymbolKind,
+    ProjectSymbolLocation, RenamePlan, SemanticTokenKind, SourceTextEdit, SymbolReference,
+    TextPosition, TextRange, apply_source_text_edits, code_actions, complete_source, definition_at,
+    diagnose_project_source, diagnose_source, hover_at, project_definition_at, project_hover_at,
+    project_references_at, references_at, rename_node_at, rename_project_symbol_at,
+    semantic_tokens,
 };
 pub use manipulation::{
     ComponentParameterEdit, ConstraintOffsetEdit, DirectHandleResizePlan, DirectManipulationPlan,

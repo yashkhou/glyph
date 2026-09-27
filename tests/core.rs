@@ -3343,6 +3343,80 @@ fn language_completion_is_context_aware_for_nodes_groups_and_constraints() {
 }
 
 #[test]
+fn language_hover_and_semantic_tokens_expose_canonical_scene_meaning() {
+    let source = r##"scene "Language Meaning" {
+  canvas 320 200;
+  component badge {
+    param inset: Length -> bg.x = 0px;
+    rect bg @id("bg") { x 0px; y 0px; width 80px; height 32px; fill "#112233"; }
+  }
+  rect box @id("box") { x 20px; y 30px; width 100px; height 60px; }
+  constrain box.left == canvas.left + 20px @required;
+}"##;
+    let node_hover = glyph::hover_at(
+        source,
+        glyph::TextPosition {
+            line: 6,
+            character: 8,
+        },
+    )
+    .expect("node hover");
+    assert!(
+        node_hover.contents.contains("**rect** `box`"),
+        "{node_hover:?}"
+    );
+
+    let property_hover = glyph::hover_at(
+        source,
+        glyph::TextPosition {
+            line: 6,
+            character: 42,
+        },
+    )
+    .expect("property hover");
+    assert!(
+        property_hover.contents.contains("`width`"),
+        "{property_hover:?}"
+    );
+    assert!(
+        property_hover.contents.contains("Length"),
+        "{property_hover:?}"
+    );
+
+    let tokens = glyph::semantic_tokens(source);
+    assert!(
+        tokens.iter().any(|token| {
+            token.kind == glyph::SemanticTokenKind::Class && token.range.start.line == 2
+        }),
+        "{tokens:?}"
+    );
+    assert!(
+        tokens.iter().any(|token| {
+            token.kind == glyph::SemanticTokenKind::Parameter && token.range.start.line == 3
+        }),
+        "{tokens:?}"
+    );
+    assert!(
+        tokens.iter().any(|token| {
+            token.kind == glyph::SemanticTokenKind::Variable && token.range.start.line == 6
+        }),
+        "{tokens:?}"
+    );
+    assert!(
+        tokens.iter().any(|token| {
+            token.kind == glyph::SemanticTokenKind::Property && token.range.start.line == 7
+        }),
+        "{tokens:?}"
+    );
+    assert!(
+        tokens.iter().any(|token| {
+            token.kind == glyph::SemanticTokenKind::Keyword && token.range.start.line == 7
+        }),
+        "{tokens:?}"
+    );
+}
+
+#[test]
 fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
     fn frame(value: serde_json::Value) -> Vec<u8> {
         let body = serde_json::to_vec(&value).unwrap();
@@ -3361,8 +3435,10 @@ fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
         serde_json::json!({"jsonrpc":"2.0","id":5,"method":"textDocument/prepareRename","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13}}}),
         serde_json::json!({"jsonrpc":"2.0","id":6,"method":"textDocument/rename","params":{"textDocument":{"uri":uri},"position":{"line":7,"character":13},"newName":"panel"}}),
         serde_json::json!({"jsonrpc":"2.0","id":7,"method":"textDocument/codeAction","params":{"textDocument":{"uri":uri},"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":1}},"context":{"diagnostics":[{"range":{"start":{"line":2,"character":0},"end":{"line":2,"character":1}},"code":"glyph.accessibility.missing_accessible_name","message":"missing name"}]}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":8,"method":"textDocument/hover","params":{"textDocument":{"uri":uri},"position":{"line":2,"character":7}}}),
+        serde_json::json!({"jsonrpc":"2.0","id":9,"method":"textDocument/semanticTokens/full","params":{"textDocument":{"uri":uri}}}),
         serde_json::json!({"jsonrpc":"2.0","method":"textDocument/didChange","params":{"textDocument":{"uri":uri,"version":2},"contentChanges":[{"range":{"start":{"line":3,"character":4},"end":{"line":3,"character":4}},"text":"width 90px;"}]}}),
-        serde_json::json!({"jsonrpc":"2.0","id":8,"method":"shutdown","params":null}),
+        serde_json::json!({"jsonrpc":"2.0","id":10,"method":"shutdown","params":null}),
         serde_json::json!({"jsonrpc":"2.0","method":"exit","params":null}),
     ];
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_glyph"))
@@ -3390,12 +3466,17 @@ fn lsp_stdio_handshake_publishes_diagnostics_and_returns_completions() {
     assert!(stdout.contains("\"textDocumentSync\":2"), "{stdout}");
     assert!(stdout.contains("\"definitionProvider\":true"), "{stdout}");
     assert!(stdout.contains("\"referencesProvider\":true"), "{stdout}");
+    assert!(stdout.contains("\"hoverProvider\":true"), "{stdout}");
+    assert!(stdout.contains("\"semanticTokensProvider\""), "{stdout}");
     assert!(stdout.contains("\"label\":\"width\""), "{stdout}");
     assert!(stdout.contains("\"placeholder\":\"card\""), "{stdout}");
     assert!(stdout.contains("\"newText\":\"panel\""), "{stdout}");
     assert!(stdout.contains("Add accessible name to card"), "{stdout}");
+    assert!(stdout.contains("**rect** `card`"), "{stdout}");
+    assert!(stdout.contains("\"id\":9"), "{stdout}");
+    assert!(stdout.contains("\"data\":["), "{stdout}");
     assert!(
-        stdout.contains("\"id\":8,\"jsonrpc\":\"2.0\",\"result\":null"),
+        stdout.contains("\"id\":10,\"jsonrpc\":\"2.0\",\"result\":null"),
         "{stdout}"
     );
 }
@@ -3452,6 +3533,14 @@ scene "Main" {
     assert_eq!(definition.name, "badge");
     assert_eq!(definition.kind, glyph::ProjectSymbolKind::Component);
     assert!(definition.declaration);
+    let hover = glyph::project_hover_at(&main, main_source, position, &overlays)
+        .unwrap()
+        .expect("project hover");
+    assert!(
+        hover.contents.contains("**component** `ui/base/badge`"),
+        "{hover:?}"
+    );
+    assert!(hover.contents.contains("base.glyph"), "{hover:?}");
 
     let references =
         glyph::project_references_at(&main, main_source, position, true, &overlays).unwrap();

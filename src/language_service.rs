@@ -1,6 +1,6 @@
 use crate::{
     accessibility::accessibility_report,
-    model::Scene,
+    model::{Scene, property_dimension},
     parser::{parse_import_specs, parse_scene, parse_scene_with_environment},
     project::{discover_project_root, load_project_scene_with_source},
     solver::solve_scene,
@@ -102,6 +102,30 @@ pub struct LanguageCodeAction {
     pub title: String,
     pub kind: String,
     pub edits: Vec<SourceTextEdit>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LanguageHover {
+    pub contents: String,
+    pub range: TextRange,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SemanticTokenKind {
+    Keyword,
+    Class,
+    Type,
+    Variable,
+    Property,
+    Parameter,
+    Namespace,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct LanguageSemanticToken {
+    pub kind: SemanticTokenKind,
+    pub range: TextRange,
 }
 
 fn one_line_range(line: u32, character: u32) -> TextRange {
@@ -542,6 +566,243 @@ fn lex_tokens(source: &str) -> Vec<LexToken> {
         }
     }
     tokens
+}
+
+fn language_keyword(value: &str) -> bool {
+    matches!(
+        value,
+        "scene"
+            | "canvas"
+            | "import"
+            | "as"
+            | "style"
+            | "paint"
+            | "linear"
+            | "radial"
+            | "from"
+            | "to"
+            | "stop"
+            | "component"
+            | "param"
+            | "slot"
+            | "variant"
+            | "instance"
+            | "rect"
+            | "ellipse"
+            | "path"
+            | "text"
+            | "image"
+            | "group"
+            | "member"
+            | "use"
+            | "role"
+            | "confidence"
+            | "repeat"
+            | "constrain"
+            | "assert"
+            | "animate"
+            | "state"
+            | "set"
+    )
+}
+
+fn language_property(value: &str) -> bool {
+    property_dimension(value).is_some()
+        || value.starts_with("font_axis_")
+        || matches!(
+            value,
+            "content"
+                | "fill"
+                | "stroke"
+                | "font"
+                | "weight"
+                | "font_style"
+                | "align"
+                | "d"
+                | "src"
+                | "fit"
+                | "clip"
+                | "mask"
+                | "fill_paint"
+                | "stroke_paint"
+                | "stroke_linecap"
+                | "stroke_linejoin"
+                | "ligatures"
+                | "a11y_label"
+                | "a11y_role"
+                | "a11y_hint"
+                | "a11y_labelled_by"
+                | "a11y_live"
+                | "a11y_hidden"
+                | "interactive"
+                | "reading_order"
+        )
+}
+
+fn semantic_kind_for_token(tokens: &[LexToken], index: usize) -> Option<SemanticTokenKind> {
+    let token = &tokens[index];
+    if language_keyword(&token.text) {
+        return Some(SemanticTokenKind::Keyword);
+    }
+    let previous = index
+        .checked_sub(1)
+        .and_then(|value| tokens.get(value))
+        .map(|value| value.text.as_str());
+    if previous == Some("component") {
+        return Some(SemanticTokenKind::Class);
+    }
+    if matches!(previous, Some("style" | "paint")) {
+        return Some(SemanticTokenKind::Type);
+    }
+    if previous == Some("instance") {
+        return Some(SemanticTokenKind::Class);
+    }
+    if matches!(previous, Some("use" | "fill_paint" | "stroke_paint")) {
+        return Some(SemanticTokenKind::Type);
+    }
+    if previous == Some("as") {
+        return Some(SemanticTokenKind::Namespace);
+    }
+    if matches!(previous, Some("param" | "slot")) {
+        return Some(SemanticTokenKind::Parameter);
+    }
+    if previous == Some(".") || language_property(&token.text) {
+        return Some(SemanticTokenKind::Property);
+    }
+    if previous.is_some_and(is_node_kind) || is_supported_node_reference(tokens, index) {
+        return Some(SemanticTokenKind::Variable);
+    }
+    None
+}
+
+pub fn semantic_tokens(source: &str) -> Vec<LanguageSemanticToken> {
+    let tokens = lex_tokens(source);
+    tokens
+        .iter()
+        .enumerate()
+        .filter_map(|(index, token)| {
+            semantic_kind_for_token(&tokens, index).map(|kind| LanguageSemanticToken {
+                kind,
+                range: range_for_byte_span(source, token.start, token.end),
+            })
+        })
+        .collect()
+}
+
+fn keyword_hover(value: &str) -> Option<&'static str> {
+    Some(match value {
+        "component" => "Declares a reusable typed Glyph component.",
+        "instance" => {
+            "Instantiates a component while preserving component ownership and inverse-edit provenance."
+        }
+        "style" => "Declares a reusable authored property set.",
+        "paint" => "Declares a typed reusable paint such as a linear or radial gradient.",
+        "constrain" => "Declares a weighted relational layout constraint.",
+        "group" => "Declares structural membership; group bounds are derived from member geometry.",
+        "state" => "Declares a named semantic scene state without rewriting the base source.",
+        "animate" => "Declares deterministic sampled motion for an authored property.",
+        "assert" => "Declares a measurable design assertion evaluated against the resolved scene.",
+        "import" => "Imports a local .glyph module inside the discovered project boundary.",
+        "canvas" => "Declares the scene canvas dimensions and optional background.",
+        "rect" | "ellipse" | "path" | "text" | "image" => {
+            "Declares a canonical Glyph rendering primitive with authored semantic properties."
+        }
+        "member" => {
+            "Adds an existing node to a structural group; ownership must remain unambiguous."
+        }
+        "param" => "Declares a typed component parameter bound to one local authored property.",
+        "slot" => "Declares a typed component slot bound to one local authored property.",
+        "variant" => "Declares a named component variant as explicit local overrides.",
+        "use" => "Applies a reusable style to the current node before explicit local properties.",
+        _ => return None,
+    })
+}
+
+fn node_kind_at_symbol(source: &str, symbol: &str) -> Option<&'static str> {
+    let tokens = lex_tokens(source);
+    for index in top_level_node_declarations(&tokens) {
+        if tokens[index].text == symbol {
+            return match tokens[index - 1].text.as_str() {
+                "rect" => Some("rect"),
+                "ellipse" => Some("ellipse"),
+                "path" => Some("path"),
+                "text" => Some("text"),
+                "image" => Some("image"),
+                "group" => Some("group"),
+                _ => None,
+            };
+        }
+    }
+    None
+}
+
+pub fn hover_at(source: &str, position: TextPosition) -> Option<LanguageHover> {
+    if let Some((symbol, range)) = node_symbol_at_position(source, position) {
+        let kind = node_kind_at_symbol(source, &symbol).unwrap_or("node");
+        return Some(LanguageHover {
+            contents: format!(
+                "**{kind}** `{symbol}`\n\nTop-level semantic node. Stable identity is preserved separately from its source name; references and constraints resolve through this authored symbol."
+            ),
+            range,
+        });
+    }
+    let tokens = lex_tokens(source);
+    let offset = byte_offset_at_position(source, position);
+    let (index, token) = tokens
+        .iter()
+        .enumerate()
+        .find(|(_, token)| offset >= token.start && offset <= token.end)?;
+    let range = range_for_byte_span(source, token.start, token.end);
+    if let Some(description) = keyword_hover(&token.text) {
+        return Some(LanguageHover {
+            contents: format!("**{}**\n\n{description}", token.text),
+            range,
+        });
+    }
+    if language_property(&token.text) || index > 0 && tokens[index - 1].text == "." {
+        let dimension = property_dimension(&token.text)
+            .map(|dimension| format!(" Expected dimension: `{dimension:?}`."))
+            .unwrap_or_default();
+        return Some(LanguageHover {
+            contents: format!(
+                "**property** `{}`\n\nAuthored or derived Glyph semantic property.{dimension}",
+                token.text
+            ),
+            range,
+        });
+    }
+    None
+}
+
+pub fn project_hover_at(
+    path: &Path,
+    source: &str,
+    position: TextPosition,
+    overlays: &BTreeMap<PathBuf, String>,
+) -> Result<Option<LanguageHover>, String> {
+    let path = path
+        .canonicalize()
+        .map_err(|error| format!("resolve Glyph source {}: {error}", path.display()))?;
+    if let Some(occurrence) = project_occurrence_at(source, position) {
+        let index = build_project_index(&path, source, overlays)?;
+        if let Some(target) = resolved_occurrence(&index, &path, &occurrence) {
+            let kind = match target.kind {
+                ProjectSymbolKind::Component => "component",
+                ProjectSymbolKind::Style => "style",
+                ProjectSymbolKind::Paint => "paint",
+            };
+            return Ok(Some(LanguageHover {
+                contents: format!(
+                    "**{kind}** `{}`\n\nResolves to `{}` in `{}` through the local Glyph project import graph.",
+                    occurrence.raw_name,
+                    target.name,
+                    target.path.display()
+                ),
+                range: occurrence.range,
+            }));
+        }
+    }
+    Ok(hover_at(source, position))
 }
 
 fn is_node_kind(value: &str) -> bool {

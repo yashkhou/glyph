@@ -4383,3 +4383,99 @@ scene "Main" {
         "{bad_id}"
     );
 }
+
+#[test]
+fn incremental_solver_session_reuses_cassowary_state_and_matches_cold_solves() {
+    let src = r##"scene "Incremental Solver" {
+        canvas 400 240;
+        rect box @id("box") { x 20px; y 40px; width 100px; height 60px; }
+        text label @id("label") {
+            content "Short label"; x 40px; y 130px; size 20px; max_width 160px; fill "#111111";
+        }
+        constrain box.center_x == canvas.center_x @required;
+        constrain label.center_x == box.center_x @strong;
+    }"##;
+    let mut incremental = parse_scene(src, "incremental-solver.glyph").unwrap();
+    let mut session = glyph::LinearSolverSession::new();
+
+    let mut cold = incremental.clone();
+    let cold_report = solve_scene(&mut cold);
+    let first = session.solve(&mut incremental);
+    assert!(!first.reused_solver);
+    assert_eq!(first.rebuild_count, 1);
+    assert_eq!(
+        serde_json::to_value(&first.report).unwrap(),
+        serde_json::to_value(&cold_report).unwrap()
+    );
+    assert_eq!(
+        glyph::build_display_list(&incremental),
+        glyph::build_display_list(&cold)
+    );
+
+    incremental.canvas.width = 520.0;
+    incremental.nodes[0].authored.props.insert(
+        "width".into(),
+        glyph::Value::Quantity(glyph::Quantity {
+            value: 130.0,
+            unit: glyph::Unit::Px,
+        }),
+    );
+    incremental.nodes[1].authored.props.insert(
+        "content".into(),
+        glyph::Value::Text("A substantially longer label that changes CoreText metrics".into()),
+    );
+    let mut cold = incremental.clone();
+    let cold_report = solve_scene(&mut cold);
+    let second = session.solve(&mut incremental);
+    assert!(second.reused_solver, "{second:?}");
+    assert_eq!(second.rebuild_count, 1);
+    assert!(second.updated_stays >= 1, "{second:?}");
+    assert!(second.updated_text_metrics >= 1, "{second:?}");
+    assert_eq!(
+        serde_json::to_value(&second.report).unwrap(),
+        serde_json::to_value(&cold_report).unwrap()
+    );
+    assert_eq!(
+        glyph::build_display_list(&incremental),
+        glyph::build_display_list(&cold)
+    );
+
+    incremental.constraints[0].offset = 18.0;
+    let mut cold = incremental.clone();
+    let cold_report = solve_scene(&mut cold);
+    let third = session.solve(&mut incremental);
+    assert!(third.reused_solver, "{third:?}");
+    assert!(third.source_constraints_reloaded, "{third:?}");
+    assert_eq!(third.rebuild_count, 1);
+    assert_eq!(
+        serde_json::to_value(&third.report).unwrap(),
+        serde_json::to_value(&cold_report).unwrap()
+    );
+    assert_eq!(
+        glyph::build_display_list(&incremental),
+        glyph::build_display_list(&cold)
+    );
+
+    let expanded = r##"scene "Incremental Solver Expanded" {
+        canvas 520 240;
+        rect box @id("box") { x 20px; y 40px; width 130px; height 60px; }
+        text label @id("label") { content "Expanded"; x 40px; y 130px; size 20px; max_width 160px; }
+        ellipse dot @id("dot") { cx 60px; cy 190px; rx 10px; ry 10px; }
+        constrain box.center_x == canvas.center_x + 18 @required;
+        constrain label.center_x == box.center_x @strong;
+    }"##;
+    let mut expanded_scene = parse_scene(expanded, "incremental-expanded.glyph").unwrap();
+    let mut cold = expanded_scene.clone();
+    let cold_report = solve_scene(&mut cold);
+    let rebuilt = session.solve(&mut expanded_scene);
+    assert!(!rebuilt.reused_solver);
+    assert_eq!(rebuilt.rebuild_count, 2);
+    assert_eq!(
+        serde_json::to_value(&rebuilt.report).unwrap(),
+        serde_json::to_value(&cold_report).unwrap()
+    );
+    assert_eq!(
+        glyph::build_display_list(&expanded_scene),
+        glyph::build_display_list(&cold)
+    );
+}

@@ -24,12 +24,20 @@ final class GlyphDocumentModel: ObservableObject {
     @Published var sourceHierarchy: [DirectSourceNode] = []
     @Published var components: [ComponentCatalogEntry] = []
     @Published var selectedConstraintID: String?
+    @Published var solverReused = false
+    @Published var solverRebuildCount = 0
 
     private var lastKnownModificationDate: Date?
     private var lastSavedSource = ""
     private var undoStack: [String] = []
     private var redoStack: [String] = []
     private let historyLimit = 50
+    private var runtimeSessionProcess: Process?
+    private var runtimeSessionInput: FileHandle?
+    private var runtimeSessionOutput: FileHandle?
+    private var runtimeSessionError: FileHandle?
+    private var runtimeSessionURL: URL?
+    private var runtimeSessionBuffer = Data()
 
     var selectedItem: DisplayItem? {
         guard let id = selectedID else { return nil }
@@ -178,6 +186,7 @@ final class GlyphDocumentModel: ObservableObject {
 
     func open(_ url: URL) {
         do {
+            stopRuntimeSession()
             sourceURL = url
             sourceText = try String(contentsOf: url, encoding: .utf8)
             lastSavedSource = sourceText
@@ -193,6 +202,8 @@ final class GlyphDocumentModel: ObservableObject {
             lastManipulationPlan = nil
             lastResizePlan = nil
             lastHandleResizePlan = nil
+            solverReused = false
+            solverRebuildCount = 0
             undoStack.removeAll()
             redoStack.removeAll()
             updateHistoryState()
@@ -809,30 +820,146 @@ final class GlyphDocumentModel: ObservableObject {
         status = label
     }
 
+    private func stopRuntimeSession() {
+        if runtimeSessionProcess?.isRunning == true, let input = runtimeSessionInput {
+            input.write(Data("{\"op\":\"quit\"}\n".utf8))
+        }
+        try? runtimeSessionInput?.close()
+        try? runtimeSessionOutput?.close()
+        try? runtimeSessionError?.close()
+        runtimeSessionInput = nil
+        runtimeSessionOutput = nil
+        runtimeSessionError = nil
+        runtimeSessionProcess = nil
+        runtimeSessionURL = nil
+        runtimeSessionBuffer.removeAll(keepingCapacity: false)
+    }
+
+    private func readRuntimeSessionLine() throws -> Data {
+        guard let output = runtimeSessionOutput else {
+            throw NSError(
+                domain: "GlyphStudio",
+                code: 90,
+                userInfo: [NSLocalizedDescriptionKey: "Glyph Studio runtime session has no output stream"]
+            )
+        }
+        while true {
+            if let newline = runtimeSessionBuffer.firstIndex(of: 0x0A) {
+                let line = Data(runtimeSessionBuffer[..<newline])
+                let after = runtimeSessionBuffer.index(after: newline)
+                runtimeSessionBuffer.removeSubrange(runtimeSessionBuffer.startIndex..<after)
+                if !line.isEmpty { return line }
+                continue
+            }
+            let chunk = output.availableData
+            if chunk.isEmpty {
+                let stderr = runtimeSessionError?.readDataToEndOfFile() ?? Data()
+                let message = String(data: stderr, encoding: .utf8) ?? ""
+                stopRuntimeSession()
+                throw NSError(
+                    domain: "GlyphStudio",
+                    code: 91,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: message.isEmpty
+                            ? "Glyph Studio runtime session ended unexpectedly"
+                            : message
+                    ]
+                )
+            }
+            runtimeSessionBuffer.append(chunk)
+        }
+    }
+
+    private func ensureRuntimeSession(for url: URL) throws {
+        let canonicalURL = url.standardizedFileURL
+        if runtimeSessionURL == canonicalURL, runtimeSessionProcess?.isRunning == true { return }
+        stopRuntimeSession()
+
+        let process = Process()
+        process.executableURL = glyphExecutable()
+        process.arguments = ["studio-session", canonicalURL.path]
+        let input = Pipe()
+        let output = Pipe()
+        let error = Pipe()
+        process.standardInput = input
+        process.standardOutput = output
+        process.standardError = error
+        try process.run()
+
+        runtimeSessionProcess = process
+        runtimeSessionInput = input.fileHandleForWriting
+        runtimeSessionOutput = output.fileHandleForReading
+        runtimeSessionError = error.fileHandleForReading
+        runtimeSessionURL = canonicalURL
+        runtimeSessionBuffer.removeAll(keepingCapacity: true)
+
+        do {
+            let ready = try JSONDecoder().decode(StudioSessionResponse.self, from: readRuntimeSessionLine())
+            guard ready.ok, ready.event == "ready" else {
+                throw NSError(
+                    domain: "GlyphStudio",
+                    code: 92,
+                    userInfo: [NSLocalizedDescriptionKey: ready.error ?? "Glyph Studio runtime session did not become ready"]
+                )
+            }
+        } catch {
+            stopRuntimeSession()
+            throw error
+        }
+    }
+
+    private func runtimeSessionRefresh(_ url: URL) throws -> StudioSessionResponse {
+        try ensureRuntimeSession(for: url)
+        guard let input = runtimeSessionInput else {
+            throw NSError(
+                domain: "GlyphStudio",
+                code: 93,
+                userInfo: [NSLocalizedDescriptionKey: "Glyph Studio runtime session has no input stream"]
+            )
+        }
+        input.write(Data("{\"op\":\"refresh\"}\n".utf8))
+        let response = try JSONDecoder().decode(StudioSessionResponse.self, from: readRuntimeSessionLine())
+        guard response.ok else {
+            throw NSError(
+                domain: "GlyphStudio",
+                code: 94,
+                userInfo: [NSLocalizedDescriptionKey: response.error ?? "Glyph Studio runtime refresh failed"]
+            )
+        }
+        return response
+    }
+
     private func refreshRuntime() throws {
         guard let url = sourceURL else { return }
-        _ = try runGlyph(["check", url.path])
-        let dlText = try runGlyph(["display-list", url.path])
-        let data = Data(dlText.utf8)
-        displayList = try JSONDecoder().decode(DisplayList.self, from: data)
-        let hierarchyText = try runGlyph(["hierarchy", url.path])
-        sourceHierarchy = try JSONDecoder().decode(HierarchyReport.self, from: Data(hierarchyText.utf8)).nodes
-        let componentsText = try runGlyph(["components", url.path])
-        components = try JSONDecoder().decode([ComponentCatalogEntry].self, from: Data(componentsText.utf8))
-        let constraintText = try runGlyph(["constraints", url.path])
-        constraints = try JSONDecoder().decode([ConstraintRecord].self, from: Data(constraintText.utf8))
+        let response = try runtimeSessionRefresh(url)
+        guard let nextDisplayList = response.displayList,
+              let nextHierarchy = response.hierarchy,
+              let nextComponents = response.components,
+              let nextConstraints = response.constraints,
+              let nextSVG = response.svg else {
+            throw NSError(
+                domain: "GlyphStudio",
+                code: 95,
+                userInfo: [NSLocalizedDescriptionKey: "Glyph Studio runtime refresh returned incomplete scene data"]
+            )
+        }
+
+        displayList = nextDisplayList
+        sourceHierarchy = nextHierarchy.nodes
+        components = nextComponents
+        constraints = nextConstraints
+        svg = nextSVG
         if let selectedConstraintID,
            !constraints.contains(where: { $0.id == selectedConstraintID }) {
             self.selectedConstraintID = nil
         }
 
-        let svgURL = FileManager.default.temporaryDirectory.appendingPathComponent("glyph-studio-\(UUID().uuidString).svg")
-        _ = try runGlyph(["render", url.path, "--output", svgURL.path])
-        svg = try String(contentsOf: svgURL, encoding: .utf8)
-        try? FileManager.default.removeItem(at: svgURL)
+        solverReused = response.session?.reusedSolver ?? false
+        solverRebuildCount = response.session?.rebuildCount ?? solverRebuildCount
         lastCheckOK = true
         error = nil
-        status = "\(displayList?.items.count ?? 0) objects · revision \(displayList?.revision ?? 0)"
+        let solverMode = solverReused ? "incremental" : "rebuilt"
+        status = "\(displayList?.items.count ?? 0) objects · revision \(displayList?.revision ?? 0) · solver \(solverMode)"
     }
 
     private func runGlyph(_ arguments: [String]) throws -> String {

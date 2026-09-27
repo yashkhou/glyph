@@ -1,9 +1,9 @@
 use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand};
 use glyph::{
-    ConstraintRhs, NodePlacement, PatchOperation, PropertyRef, Relation, ResizeHandle, Scene,
-    Strength, Unit, Value, accessibility_report, add_source_constraint, add_source_group_member,
-    apply_direct_handle_resize_source, apply_direct_manipulation_source,
+    ConstraintRhs, LinearSolverSession, NodePlacement, PatchOperation, PropertyRef, Relation,
+    ResizeHandle, Scene, Strength, Unit, Value, accessibility_report, add_source_constraint,
+    add_source_group_member, apply_direct_handle_resize_source, apply_direct_manipulation_source,
     apply_direct_resize_source, apply_transaction, build_display_list, component_catalog,
     create_source_group, create_source_instance,
     diff::diff_scenes,
@@ -18,9 +18,10 @@ use glyph::{
     vision::{VisionImportMode, default_vision_helper, import_image_to_glyph_with_mode},
     write_project_bundle,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
+    io::{self, BufRead, Write},
     path::{Path, PathBuf},
 };
 
@@ -39,6 +40,9 @@ struct Cli {
 enum Command {
     Capabilities,
     Check {
+        input: PathBuf,
+    },
+    StudioSession {
         input: PathBuf,
     },
     ProjectCheck {
@@ -507,6 +511,95 @@ fn require_glyph_source(path: &Path, operation: &str) -> Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+enum StudioSessionRequest {
+    Refresh,
+    Ping,
+    Quit,
+}
+
+fn write_json_line(value: &impl Serialize) -> Result<()> {
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
+    serde_json::to_writer(&mut lock, value)?;
+    writeln!(&mut lock)?;
+    lock.flush()?;
+    Ok(())
+}
+
+fn studio_session_refresh(
+    input: &Path,
+    session: &mut LinearSolverSession,
+) -> Result<serde_json::Value> {
+    let source = fs::read_to_string(input).with_context(|| format!("read {}", input.display()))?;
+    let mut scene = load_project_scene(input)?;
+    let outcome = session.solve(&mut scene);
+    if !outcome.report.required_conflicts.is_empty() || !outcome.report.unresolved.is_empty() {
+        anyhow::bail!(
+            "scene has {} required conflict(s) and {} unresolved relation(s)",
+            outcome.report.required_conflicts.len(),
+            outcome.report.unresolved.len()
+        );
+    }
+    let display_list = build_display_list(&scene);
+    let hierarchy = direct_source_nodes(&source)?;
+    let components = component_catalog(&scene);
+    let constraints = scene.constraints.clone();
+    let svg = render_svg(&scene);
+    Ok(serde_json::json!({
+        "ok": true,
+        "session": outcome,
+        "display_list": display_list,
+        "hierarchy": {"nodes": hierarchy},
+        "components": components,
+        "constraints": constraints,
+        "svg": svg
+    }))
+}
+
+fn run_studio_session(input: &Path) -> Result<()> {
+    require_glyph_source(input, "studio-session")?;
+    let stdin = io::stdin();
+    let mut session = LinearSolverSession::new();
+    write_json_line(&serde_json::json!({
+        "ok": true,
+        "event": "ready",
+        "input": input
+    }))?;
+    for line in stdin.lock().lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let request = match serde_json::from_str::<StudioSessionRequest>(&line) {
+            Ok(request) => request,
+            Err(error) => {
+                write_json_line(
+                    &serde_json::json!({"ok":false,"error":format!("invalid request: {error}")}),
+                )?;
+                continue;
+            }
+        };
+        match request {
+            StudioSessionRequest::Refresh => match studio_session_refresh(input, &mut session) {
+                Ok(value) => write_json_line(&value)?,
+                Err(error) => {
+                    write_json_line(&serde_json::json!({"ok":false,"error":error.to_string()}))?
+                }
+            },
+            StudioSessionRequest::Ping => {
+                write_json_line(&serde_json::json!({"ok":true,"event":"pong"}))?;
+            }
+            StudioSessionRequest::Quit => {
+                write_json_line(&serde_json::json!({"ok":true,"event":"bye"}))?;
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
@@ -519,10 +612,10 @@ fn main() -> Result<()> {
             "constraints":["==",">=","<=","required","strong","medium","weak"],
             "reuse":["styles","typed-linear-radial-paints","components","instances","seeded-repeat","local-project-imports"],
             "runtime":["assertions","named-states","sampled-motion","motion-delay-repeat-alternate","deterministic-spring-presets","deterministic-text-layout"],
-            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","source-hierarchy-query","source-hierarchy-reparent","source-node-reorder","component-catalog","source-component-extraction","source-instance-create-remove","source-instance-binding-edit","language-diagnostics","context-completion","language-definition","language-references","language-hover","semantic-tokens","safe-node-rename","project-symbol-index","cross-file-component-style-paint-refactor","language-code-actions","lsp-stdio","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle","semantic-swiftui-codegen","semantic-web-canvas-codegen"],
+            "agent":["query-by-role","inspect","why","constraint-query","source-backed-constraint-editing","revision-safe-apply","semantic-diff","visual-diff","source-round-trip","constraint-aware-direct-manipulation","source-backed-drag-plan","constraint-aware-direct-resize","source-backed-resize-plan","multi-edge-resize","structural-group-translation","source-hierarchy-query","source-hierarchy-reparent","source-node-reorder","component-catalog","source-component-extraction","source-instance-create-remove","source-instance-binding-edit","language-diagnostics","context-completion","language-definition","language-references","language-hover","semantic-tokens","safe-node-rename","project-symbol-index","cross-file-component-style-paint-refactor","language-code-actions","lsp-stdio","incremental-solver-session","studio-runtime-session","display-list","object-map","renderer-conformance","accessibility-audit","target-strategy","bounded-image-import","project-check","deterministic-project-bundle","semantic-swiftui-codegen","semantic-web-canvas-codegen"],
             "outputs":["glyph-source","gsir-json","display-list-json","object-map-json","visual-diff-json","language-diagnostics-json","renderer-conformance-json","accessibility-audit-json","target-strategy-json","project-bundle-directory","project-bundle-manifest-json","svg","png-via-CommanderDraw","pdf-via-CommanderDraw","commander-draw-json","swiftui-source","web-canvas-module"],
             "guarantees":["stable semantic IDs","authored/derived separation","transaction revision checks","deterministic SVG","deterministic display list","seeded procedural determinism","Vision import confidence/provenance retained in source","project assets content-addressed by SHA-256","project bundles preserve transitive source paths and verify before publish"],
-            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation/grouping plus explicit hierarchy reparenting, direct source/render-order reordering, project-aware component catalog plus source-authoritative local component extraction and instance add/remove/parameter/slot editing, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; scene solve rebuilds solver per invocation","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove + structural grouping/reparenting + direct layer-owner source/render-order edits + fail-closed local component extraction + component-instance create/remove/parameter/slot edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, document-local node navigation/rename, canonical hover + semantic tokens, project-aware component/style/paint definition/references/cross-file rename and imported-symbol hover, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project navigation/refactors follow transitive import namespaces and overlay open unsaved buffers; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw; SwiftUI and Web Canvas emitters are implemented for a documented bounded display-list subset and fail closed on unsupported semantics","visualDiff":"stable-ID resolved visual diff v1"}
+            "status":{"vision":"Apple Vision import v1 supports structured editable UI reconstruction plus deterministic auto/hybrid fallback that preserves ambiguous photo/illustration pixels as a raster base with non-rendering confidence-bearing semantic overlays; not arbitrary photo-to-clean-vector reconstruction","motion":"deterministic sampled timeline v1 with typed time units, delay, finite repeat, alternate playback and spring/ease presets; not a continuous physics engine","studio":"native macOS Studio v0.1: source + resolved plate + semantic ledger + intent inspector + source-backed edits + constraint-aware direct drag/resize + first-class constraint badges/edit/add/remove + validated source undo/redo; semantic text-frame resize, explicit multi-edge/corner handles, structural group translation/grouping plus explicit hierarchy reparenting, direct source/render-order reordering, project-aware component catalog plus source-authoritative local component extraction and instance add/remove/parameter/slot editing, compatible equality co-editing, inequality guards, unambiguous component inverse edits, affine path resize with supported translate constraints, and explicit component-owned path affine bindings are implemented; unsupported inverse intent fails closed","solver":"Cassowary-class weighted linear solver v1; one-shot solve remains available, while LinearSolverSession preserves Cassowary state across topology-stable edits, incrementally refreshes canvas values, authored stays, CoreText metric constraints and source-constraint constants, and rebuilds fail-safely when topology changes; Studio uses the persistent session protocol","text":"macOS CoreText shaping/metrics/wrapping with fallback/substitution diagnostics, letter spacing, ligature policy, and validated OpenType variable-font axes; deterministic non-macOS fallback only; CommanderDraw preserves advanced typography metadata but exact backend fidelity is not guaranteed","roundTrip":"semantic property + first-class constraint relation/strength/offset/add/remove + structural grouping/reparenting + direct layer-owner source/render-order edits + fail-closed local component extraction + component-instance create/remove/parameter/slot edits v1","displayList":"backend-neutral display list + object map v3; typed paints, affine transforms, resolved clip/mask references, shaped text metrics","conformance":"machine-readable SVG/CommanderDraw exact/degraded/unsupported backend contract; pixel fidelity remains separately verified","accessibility":"first-class a11y labels/roles/hints/label references/live regions/reading order/interactive metadata lower through display-list, SVG ARIA and CommanderDraw metadata; deterministic audit flags missing names/targets, duplicate reading order, hidden interactivity and undersized targets","tooling":"deterministic parser/solver/accessibility diagnostics, context-aware source completions, document-local node navigation/rename, canonical hover + semantic tokens, project-aware component/style/paint definition/references/cross-file rename and imported-symbol hover, accessibility quick fixes, and stdio LSP v1 with UTF-16-safe incremental synchronization; project navigation/refactors follow transitive import namespaces and overlay open unsaved buffers; project manifests verify SHA-256 assets and publish validated self-contained dependency bundles","targets":"visual export and semantic codegen are separate contracts; PDF is implemented via CommanderDraw; SwiftUI and Web Canvas emitters are implemented for a documented bounded display-list subset and fail closed on unsupported semantics","visualDiff":"stable-ID resolved visual diff v1"}
         })),
         Command::Check { input } => {
             let mut scene = load_project_scene(&input)?;
@@ -536,6 +629,7 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
+        Command::StudioSession { input } => run_studio_session(&input),
         Command::ProjectCheck { input } => {
             let report = validate_project(&input)?;
             print_json(&report)

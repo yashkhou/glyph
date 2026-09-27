@@ -679,3 +679,90 @@ extension GlyphDocumentModelTests {
         XCTAssertEqual(model.displayList?.objectMap["card1/bg"]?.bounds, [40, 30, 150, 60])
     }
 }
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStudioPersistentSolverSessionReusesTopologyStableEdits() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-solver-session-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("solver-session.glyph")
+        let source = #"""
+        scene "Studio Solver Session" {
+          canvas 420 260;
+          rect box @id("box") { x 40px; y 50px; width 80px; height 40px; }
+          constrain box.center_x == canvas.center_x @required;
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertFalse(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+
+        model.refresh()
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertTrue(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+        XCTAssertTrue(model.status.contains("solver incremental"), model.status)
+
+        model.setProperty(node: "box", property: "width", value: "120px")
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertTrue(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+        XCTAssertEqual(model.displayList?.objectMap["box"]?.bounds?[2], 120)
+
+        let sourceAfterEdit = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(sourceAfterEdit.contains("width 120px;"), sourceAfterEdit)
+    }
+}
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testRuntimeRefreshReusesLongLivedSolverSession() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-session-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("session.glyph")
+        let initial = #"""
+        scene "Studio Session" {
+          canvas 320 220;
+          rect box @id("box") { x 20px; y 30px; width 80px; height 60px; fill "#336699"; }
+        }
+        """#
+        try initial.write(to: sourceURL, atomically: true, encoding: .utf8)
+
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertFalse(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+
+        model.refresh()
+        XCTAssertTrue(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+
+        let resized = initial.replacingOccurrences(of: "width 80px", with: "width 120px")
+        try resized.write(to: sourceURL, atomically: true, encoding: .utf8)
+        model.refresh()
+        XCTAssertTrue(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 1)
+        XCTAssertEqual(model.displayList?.objectMap["box"]?.bounds, [20, 30, 120, 60])
+
+        let expanded = resized.replacingOccurrences(
+            of: "\n}",
+            with: "\n  ellipse dot @id(\"dot\") { cx 200px; cy 120px; rx 10px; ry 10px; }\n}"
+        )
+        try expanded.write(to: sourceURL, atomically: true, encoding: .utf8)
+        model.refresh()
+        XCTAssertFalse(model.solverReused)
+        XCTAssertEqual(model.solverRebuildCount, 2)
+        XCTAssertEqual(model.displayList?.items.count, 2)
+    }
+}

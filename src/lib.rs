@@ -47,6 +47,7 @@ pub use language_service::{
     project_references_at, references_at, rename_node_at, rename_project_symbol_at,
     semantic_tokens,
 };
+pub use linear_solver::{IncrementalSolveOutcome, LinearSolverSession};
 pub use manipulation::{
     ComponentParameterEdit, ConstraintOffsetEdit, DirectHandleResizePlan, DirectManipulationPlan,
     DirectResizePlan, ManipulationAxis, ManipulationBlock, ManipulationEdit, ResizeEdit,

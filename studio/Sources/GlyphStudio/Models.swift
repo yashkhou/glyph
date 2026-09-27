@@ -36,6 +36,41 @@ struct HierarchyReport: Decodable {
     let nodes: [DirectSourceNode]
 }
 
+struct IncrementalSessionOutcome: Decodable {
+    let reusedSolver: Bool
+    let solveCount: Int
+    let rebuildCount: Int
+    let updatedStays: Int
+    let updatedTextMetrics: Int
+    let sourceConstraintsReloaded: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case reusedSolver = "reused_solver"
+        case solveCount = "solve_count"
+        case rebuildCount = "rebuild_count"
+        case updatedStays = "updated_stays"
+        case updatedTextMetrics = "updated_text_metrics"
+        case sourceConstraintsReloaded = "source_constraints_reloaded"
+    }
+}
+
+struct StudioSessionResponse: Decodable {
+    let ok: Bool
+    let error: String?
+    let event: String?
+    let session: IncrementalSessionOutcome?
+    let displayList: DisplayList?
+    let hierarchy: HierarchyReport?
+    let components: [ComponentCatalogEntry]?
+    let constraints: [ConstraintRecord]?
+    let svg: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok, error, event, session, hierarchy, components, constraints, svg
+        case displayList = "display_list"
+    }
+}
+
 struct DisplayItem: Decodable, Identifiable {
     let id: String
     let name: String

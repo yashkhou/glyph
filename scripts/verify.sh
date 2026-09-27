@@ -125,6 +125,18 @@ grep -A8 '"id": "b"' "$TMP_VERIFY/reparent-right.json" | grep -q '"parent": "rig
 "$BIN" check "$TMP_VERIFY/reparent-root.glyph"
 "$BIN" hierarchy "$TMP_VERIFY/reparent-root.glyph" > "$TMP_VERIFY/reparent-root.json"
 grep -A8 '"id": "b"' "$TMP_VERIFY/reparent-root.json" | grep -q '"parent": null'
+printf '{"op":"refresh"}\n{"op":"refresh"}\n{"op":"quit"}\n' | "$BIN" studio-session "$TMP_VERIFY/reparent.glyph" > "$TMP_VERIFY/studio-session.jsonl"
+python3 - "$TMP_VERIFY/studio-session.jsonl" <<'PYVERIFY'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1]) if line.strip()]
+refreshes = [row for row in rows if "session" in row]
+assert len(refreshes) == 2, rows
+assert refreshes[0]["ok"] is True and refreshes[0]["session"]["reused_solver"] is False, refreshes[0]
+assert refreshes[0]["session"]["rebuild_count"] == 1, refreshes[0]
+assert refreshes[1]["ok"] is True and refreshes[1]["session"]["reused_solver"] is True, refreshes[1]
+assert refreshes[1]["session"]["rebuild_count"] == 1, refreshes[1]
+assert rows[-1].get("event") == "bye", rows[-1]
+PYVERIFY
 cat > "$TMP_VERIFY/path.glyph" <<'EOF'
 scene "Path Verify" {
   canvas 300 200;

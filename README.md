@@ -4,7 +4,7 @@ Glyph is a programmable design format and agent-native semantic visual runtime. 
 
 ## Status
 
-`v0.1.0` is a working research prototype. The canonical representation is **GSIR (Glyph Scene IR)**. The current resolver is Cassowary-class weighted linear solving with explicit required/soft constraint diagnostics; solves currently rebuild solver state per invocation rather than keeping a long-lived incremental editing session.
+`v0.1.0` is a working research prototype. The canonical representation is **GSIR (Glyph Scene IR)**. The current resolver is Cassowary-class weighted linear solving with explicit required/soft constraint diagnostics. Studio now keeps a long-lived incremental solver session: topology-stable refreshes reuse Cassowary state, while structural changes rebuild deterministically and remain equivalent to cold solves.
 
 ```text
 .glyph source

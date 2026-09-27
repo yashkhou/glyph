@@ -73,6 +73,21 @@ grep -q 'param px 25px;' "$TMP_VERIFY/component-moved.glyph"
 "$BIN" source-resize "$TMP_VERIFY/component-moved.glyph" card1/bg 20 0 --output "$TMP_VERIFY/component-resized.glyph"
 grep -q 'param w 130px;' "$TMP_VERIFY/component-resized.glyph"
 "$BIN" check "$TMP_VERIFY/component-resized.glyph"
+cat > "$TMP_VERIFY/hierarchy.glyph" <<'EOF'
+scene "Hierarchy Verify" {
+  canvas 420 240;
+  component badge { rect bg @id("bg") { x 0; y 0; width 70; height 30; } }
+  rect back @id("back") { x 10; y 10; width 100; height 80; }
+  instance badge badge1 @id("badge1") { x 120; y 30; }
+  rect front @id("front") { x 220; y 20; width 100; height 80; }
+}
+EOF
+"$BIN" hierarchy "$TMP_VERIFY/hierarchy.glyph" > "$TMP_VERIFY/hierarchy.json"
+grep -q '"id": "badge1"' "$TMP_VERIFY/hierarchy.json"
+grep -q '"kind": "instance:badge"' "$TMP_VERIFY/hierarchy.json"
+"$BIN" node-move "$TMP_VERIFY/hierarchy.glyph" badge1/bg back before --output "$TMP_VERIFY/hierarchy-moved.glyph"
+"$BIN" check "$TMP_VERIFY/hierarchy-moved.glyph"
+[[ "$(grep -n 'instance badge badge1' "$TMP_VERIFY/hierarchy-moved.glyph" | cut -d: -f1)" -lt "$(grep -n 'rect back' "$TMP_VERIFY/hierarchy-moved.glyph" | cut -d: -f1)" ]]
 cat > "$TMP_VERIFY/path.glyph" <<'EOF'
 scene "Path Verify" {
   canvas 300 200;

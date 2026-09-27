@@ -1286,9 +1286,9 @@ pub fn parse_import_specs(input: &str) -> Result<Vec<ImportSpec>> {
     Ok(imports)
 }
 
-pub(crate) fn direct_authored_node_records(
+pub(crate) fn direct_authored_node_span_records(
     input: &str,
-) -> Result<Vec<(String, String, String, usize)>> {
+) -> Result<Vec<(String, String, String, usize, usize, usize)>> {
     let mut parsed = GlyphParser::parse(Rule::file, input).context("Glyph parse failed")?;
     let file = parsed.next().context("missing file")?;
     let scene_pair = file
@@ -1300,6 +1300,9 @@ pub(crate) fn direct_authored_node_records(
         if item.as_rule() != Rule::node {
             continue;
         }
+        let span = item.as_span();
+        let start = span.start();
+        let end = span.end();
         let line = line_of(&item);
         let mut bits = item.into_inner();
         let kind = bits
@@ -1323,9 +1326,18 @@ pub(crate) fn direct_authored_node_records(
                     .as_str(),
             );
         }
-        records.push((id, name, kind, line));
+        records.push((id, name, kind, line, start, end));
     }
     Ok(records)
+}
+
+pub(crate) fn direct_authored_node_records(
+    input: &str,
+) -> Result<Vec<(String, String, String, usize)>> {
+    Ok(direct_authored_node_span_records(input)?
+        .into_iter()
+        .map(|(id, name, kind, line, _, _)| (id, name, kind, line))
+        .collect())
 }
 
 pub fn direct_authored_node_identity(
@@ -1340,23 +1352,48 @@ pub fn direct_authored_node_identity(
     Err(anyhow!("node {node_id} not found or not directly authored"))
 }
 
-pub fn direct_authored_instance_identity(
+pub(crate) fn direct_authored_node_source_span(
     input: &str,
-    instance_id: &str,
-) -> Result<(String, String, usize)> {
+    requested: &str,
+) -> Result<(usize, usize)> {
+    let matches = direct_authored_node_span_records(input)?
+        .into_iter()
+        .filter(|(id, name, _, _, _, _)| id == requested || name == requested)
+        .map(|(_, _, _, _, start, end)| (start, end))
+        .collect::<Vec<_>>();
+    if matches.len() == 1 {
+        Ok(matches[0])
+    } else {
+        Err(anyhow!(
+            "node {requested} is not one unambiguous directly-authored node"
+        ))
+    }
+}
+
+pub(crate) fn direct_authored_instance_span_records(
+    input: &str,
+) -> Result<Vec<(String, String, String, usize, usize, usize)>> {
     let mut parsed = GlyphParser::parse(Rule::file, input).context("Glyph parse failed")?;
     let file = parsed.next().context("missing file")?;
     let scene_pair = file
         .into_inner()
         .find(|item| item.as_rule() == Rule::scene)
         .context("missing scene")?;
+    let mut records = Vec::new();
     for item in scene_pair.into_inner() {
         if item.as_rule() != Rule::instance {
             continue;
         }
+        let span = item.as_span();
+        let start = span.start();
+        let end = span.end();
         let line = line_of(&item);
         let mut bits = item.into_inner();
-        let _component = bits.next().context("missing instance component")?;
+        let component = bits
+            .next()
+            .context("missing instance component")?
+            .as_str()
+            .to_string();
         let name = bits
             .next()
             .context("missing instance name")?
@@ -1373,6 +1410,25 @@ pub fn direct_authored_instance_identity(
                     .as_str(),
             );
         }
+        records.push((id, name, component, line, start, end));
+    }
+    Ok(records)
+}
+
+pub(crate) fn direct_authored_instance_records(
+    input: &str,
+) -> Result<Vec<(String, String, String, usize)>> {
+    Ok(direct_authored_instance_span_records(input)?
+        .into_iter()
+        .map(|(id, name, component, line, _, _)| (id, name, component, line))
+        .collect())
+}
+
+pub fn direct_authored_instance_identity(
+    input: &str,
+    instance_id: &str,
+) -> Result<(String, String, usize)> {
+    for (id, name, _component, line) in direct_authored_instance_records(input)? {
         if id == instance_id || name == instance_id {
             return Ok((id, name, line));
         }
@@ -1380,6 +1436,24 @@ pub fn direct_authored_instance_identity(
     Err(anyhow!(
         "instance {instance_id} not found or not directly authored"
     ))
+}
+
+pub(crate) fn direct_authored_instance_source_span(
+    input: &str,
+    requested: &str,
+) -> Result<(usize, usize)> {
+    let matches = direct_authored_instance_span_records(input)?
+        .into_iter()
+        .filter(|(id, name, _, _, _, _)| id == requested || name == requested)
+        .map(|(_, _, _, _, start, end)| (start, end))
+        .collect::<Vec<_>>();
+    if matches.len() == 1 {
+        Ok(matches[0])
+    } else {
+        Err(anyhow!(
+            "instance {requested} is not one unambiguous directly-authored instance"
+        ))
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

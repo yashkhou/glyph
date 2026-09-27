@@ -65,7 +65,8 @@ pub use render::{render_svg, write_svg};
 pub use runtime::{AssertionResult, evaluate_assertions, sample_motion, scene_in_state};
 pub use solver::{SolveReport, solve_scene};
 pub use source_edit::{
-    add_source_constraint, add_source_group_member, create_source_group, remove_source_constraint,
+    DirectSourceNode, NodePlacement, add_source_constraint, add_source_group_member,
+    create_source_group, direct_source_nodes, move_source_node, remove_source_constraint,
     remove_source_group, remove_source_group_member, set_source_constraint_offset,
     set_source_constraint_relation, set_source_constraint_strength, set_source_property,
 };

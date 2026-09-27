@@ -21,6 +21,7 @@ final class GlyphDocumentModel: ObservableObject {
     @Published var lastResizePlan: DirectResizePlan?
     @Published var lastHandleResizePlan: DirectHandleResizePlan?
     @Published var constraints: [ConstraintRecord] = []
+    @Published var sourceHierarchy: [DirectSourceNode] = []
     @Published var selectedConstraintID: String?
 
     private var lastKnownModificationDate: Date?
@@ -43,6 +44,35 @@ final class GlyphDocumentModel: ObservableObject {
 
     var canUngroupSelection: Bool {
         !isDirty && selectedIDs.count == 1 && selectedItem?.primitive.kind == "group"
+    }
+
+    private var paintHierarchy: [DirectSourceNode] {
+        sourceHierarchy.filter { $0.kind != "group" }
+    }
+
+    private var selectedSourceOwner: DirectSourceNode? {
+        guard !isDirty, selectedIDs.count == 1, let selectedID else { return nil }
+        if let exact = paintHierarchy.first(where: { $0.id == selectedID }) {
+            return exact
+        }
+        return paintHierarchy
+            .filter { $0.kind.hasPrefix("instance:") && selectedID.hasPrefix($0.id + "/") }
+            .max { $0.id.count < $1.id.count }
+    }
+
+    private var selectedSourceIndex: Int? {
+        guard let owner = selectedSourceOwner else { return nil }
+        return paintHierarchy.firstIndex(where: { $0.id == owner.id })
+    }
+
+    var canSendBackward: Bool {
+        guard let index = selectedSourceIndex else { return false }
+        return index > 0
+    }
+
+    var canBringForward: Bool {
+        guard let index = selectedSourceIndex else { return false }
+        return index + 1 < paintHierarchy.count
     }
 
     func select(_ id: String, extending: Bool = false) {
@@ -123,6 +153,7 @@ final class GlyphDocumentModel: ObservableObject {
             selectedIDs.removeAll()
             selectedConstraintID = nil
             constraints = []
+            sourceHierarchy = []
             lastVisualDiff = nil
             lastManipulationPlan = nil
             lastResizePlan = nil
@@ -312,6 +343,51 @@ final class GlyphDocumentModel: ObservableObject {
         } catch {
             self.error = error.localizedDescription
             status = "Ungroup rejected"
+        }
+    }
+
+    func sendSelectedBackward() {
+        guard let index = selectedSourceIndex, index > 0, let node = selectedID else { return }
+        let anchor = paintHierarchy[index - 1].id
+        moveSourceNode(node: node, anchor: anchor, placement: "before", label: "Sent \(node) backward")
+    }
+
+    func bringSelectedForward() {
+        guard let index = selectedSourceIndex,
+              index + 1 < paintHierarchy.count,
+              let node = selectedID else { return }
+        let anchor = paintHierarchy[index + 1].id
+        moveSourceNode(node: node, anchor: anchor, placement: "after", label: "Brought \(node) forward")
+    }
+
+    private func moveSourceNode(node: String, anchor: String, placement: String, label: String) {
+        guard let url = sourceURL, !isDirty else {
+            status = "Save source edits before reordering"
+            return
+        }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-reorder-\(UUID().uuidString).glyph")
+        defer {
+            try? FileManager.default.removeItem(at: temporary)
+            try? FileManager.default.removeItem(at: beforeURL)
+        }
+        do {
+            try sourceText.write(to: beforeURL, atomically: true, encoding: .utf8)
+            _ = try runGlyph([
+                "node-move", beforeURL.path, node, anchor, placement,
+                "--output", temporary.path,
+            ])
+            _ = try runGlyph(["check", temporary.path])
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(sourceText)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            select(node)
+            status = label
+        } catch {
+            self.error = error.localizedDescription
+            status = "Reorder rejected"
         }
     }
 
@@ -565,6 +641,8 @@ final class GlyphDocumentModel: ObservableObject {
         let dlText = try runGlyph(["display-list", url.path])
         let data = Data(dlText.utf8)
         displayList = try JSONDecoder().decode(DisplayList.self, from: data)
+        let hierarchyText = try runGlyph(["hierarchy", url.path])
+        sourceHierarchy = try JSONDecoder().decode(HierarchyReport.self, from: Data(hierarchyText.utf8)).nodes
         let constraintText = try runGlyph(["constraints", url.path])
         constraints = try JSONDecoder().decode([ConstraintRecord].self, from: Data(constraintText.utf8))
         if let selectedConstraintID,

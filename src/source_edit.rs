@@ -3,12 +3,15 @@ use crate::{
         ConstraintRhs, PropertyRef, Relation, Strength, Unit, Value, validate_value_for_property,
     },
     parser::{
-        direct_authored_constraint_source_span, direct_authored_instance_identity,
-        direct_authored_node_identity, direct_authored_node_records,
-        direct_authored_scene_source_span, parse_import_specs, parse_scene, validate_source_syntax,
+        direct_authored_constraint_source_span, direct_authored_instance_source_span,
+        direct_authored_instance_span_records, direct_authored_node_identity,
+        direct_authored_node_records, direct_authored_node_source_span,
+        direct_authored_node_span_records, direct_authored_scene_source_span, parse_import_specs,
+        parse_scene, validate_source_syntax,
     },
 };
 use anyhow::{Result, anyhow};
+use serde::Serialize;
 
 fn skip_string(bytes: &[u8], mut i: usize) -> usize {
     i += 1;
@@ -70,92 +73,149 @@ fn token_at(source: &str, start: usize, token: &str) -> bool {
     let right = start + t.len() == b.len() || boundary(b[start + t.len()]);
     left && right
 }
-fn node_block(source: &str, node_id: &str) -> Result<(usize, usize, usize)> {
-    let (node_id, node_name, node_line) = direct_authored_node_identity(source, node_id)?;
-    let lines: Vec<usize> = {
-        let mut v = vec![0];
-        for (i, c) in source.char_indices() {
-            if c == '\n' {
-                v.push(i + 1)
-            }
-        }
-        v
-    };
-    let approx = *lines.get(node_line.saturating_sub(1)).unwrap_or(&0);
-    let start = source[..=approx.min(source.len().saturating_sub(1))]
-        .rfind(|c: char| c == '\n')
-        .map(|x| x + 1)
+fn block_from_source_span(
+    source: &str,
+    span_start: usize,
+    span_end: usize,
+    label: &str,
+) -> Result<(usize, usize, usize)> {
+    let line_start = source[..span_start]
+        .rfind('\n')
+        .map(|index| index + 1)
         .unwrap_or(0);
-    let mut i = start;
+    let start = if source[line_start..span_start].trim().is_empty() {
+        line_start
+    } else {
+        span_start
+    };
     let bytes = source.as_bytes();
-    while i < bytes.len() {
-        if bytes[i] == b'"' {
-            i = skip_string(bytes, i);
+    let mut cursor = span_start;
+    while cursor < span_end {
+        if bytes[cursor] == b'"' {
+            cursor = skip_string(bytes, cursor);
             continue;
         }
-        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
-            i = skip_line_comment(bytes, i + 2);
+        if cursor + 1 < span_end && bytes[cursor] == b'/' && bytes[cursor + 1] == b'/' {
+            cursor = skip_line_comment(bytes, cursor + 2);
             continue;
         }
-        if bytes[i] == b'{' {
-            let close = find_matching_brace(source, i)?;
-            let header = &source[start..i];
-            if header.contains(&format!("@id(\"{}\")", node_id))
-                || (node_id == node_name && header.split_whitespace().any(|x| x == node_name))
-            {
-                return Ok((start, i, close));
+        if bytes[cursor] == b'{' {
+            let close = find_matching_brace(source, cursor)?;
+            if close >= span_end {
+                return Err(anyhow!(
+                    "source span for {label} has mismatched block bounds"
+                ));
             }
-            i = close + 1;
-            continue;
+            return Ok((start, cursor, close));
         }
-        i += 1;
+        cursor += 1;
     }
-    Err(anyhow!("source block for {node_id} not found"))
+    Err(anyhow!("source block for {label} not found"))
+}
+
+fn node_block(source: &str, node_id: &str) -> Result<(usize, usize, usize)> {
+    let (span_start, span_end) = direct_authored_node_source_span(source, node_id)?;
+    block_from_source_span(source, span_start, span_end, node_id)
 }
 
 fn instance_block(source: &str, instance_id: &str) -> Result<(usize, usize, usize)> {
-    let (instance_id, instance_name, instance_line) =
-        direct_authored_instance_identity(source, instance_id)?;
-    let lines: Vec<usize> = {
-        let mut v = vec![0];
-        for (i, c) in source.char_indices() {
-            if c == '\n' {
-                v.push(i + 1)
-            }
-        }
-        v
-    };
-    let approx = *lines.get(instance_line.saturating_sub(1)).unwrap_or(&0);
-    let start = source[..=approx.min(source.len().saturating_sub(1))]
-        .rfind(|c: char| c == '\n')
-        .map(|x| x + 1)
-        .unwrap_or(0);
-    let mut i = start;
-    let bytes = source.as_bytes();
-    while i < bytes.len() {
-        if bytes[i] == b'"' {
-            i = skip_string(bytes, i);
-            continue;
-        }
-        if i + 1 < bytes.len() && bytes[i] == b'/' && bytes[i + 1] == b'/' {
-            i = skip_line_comment(bytes, i + 2);
-            continue;
-        }
-        if bytes[i] == b'{' {
-            let close = find_matching_brace(source, i)?;
-            let header = &source[start..i];
-            if header.contains(&format!("@id(\"{}\")", instance_id))
-                || (instance_id == instance_name
-                    && header.split_whitespace().any(|x| x == instance_name))
-            {
-                return Ok((start, i, close));
-            }
-            i = close + 1;
-            continue;
-        }
-        i += 1;
+    let (span_start, span_end) = direct_authored_instance_source_span(source, instance_id)?;
+    block_from_source_span(source, span_start, span_end, instance_id)
+}
+
+#[derive(Debug, Clone)]
+struct DirectLayerOwner {
+    id: String,
+    name: String,
+    kind: String,
+    line: usize,
+    is_instance: bool,
+    span_start: usize,
+    span_end: usize,
+}
+
+fn direct_layer_owners(source: &str) -> Result<Vec<DirectLayerOwner>> {
+    let mut owners = direct_authored_node_span_records(source)?
+        .into_iter()
+        .map(
+            |(id, name, kind, line, span_start, span_end)| DirectLayerOwner {
+                id,
+                name,
+                kind,
+                line,
+                is_instance: false,
+                span_start,
+                span_end,
+            },
+        )
+        .collect::<Vec<_>>();
+    owners.extend(
+        direct_authored_instance_span_records(source)?
+            .into_iter()
+            .map(
+                |(id, name, component, line, span_start, span_end)| DirectLayerOwner {
+                    id,
+                    name,
+                    kind: format!("instance:{component}"),
+                    line,
+                    is_instance: true,
+                    span_start,
+                    span_end,
+                },
+            ),
+    );
+    owners.sort_by_key(|owner| owner.span_start);
+    Ok(owners)
+}
+
+fn resolve_layer_owner(source: &str, requested: &str) -> Result<DirectLayerOwner> {
+    let owners = direct_layer_owners(source)?;
+    let exact = owners
+        .iter()
+        .filter(|owner| owner.id == requested || owner.name == requested)
+        .cloned()
+        .collect::<Vec<_>>();
+    if exact.len() == 1 {
+        return Ok(exact[0].clone());
     }
-    Err(anyhow!("source instance block for {instance_id} not found"))
+    if exact.len() > 1 {
+        return Err(anyhow!("layer owner {requested} is ambiguous"));
+    }
+
+    let matches = owners
+        .iter()
+        .filter(|owner| {
+            owner.is_instance
+                && (requested.strip_prefix(&format!("{}/", owner.id)).is_some()
+                    || requested
+                        .strip_prefix(&format!("{}/", owner.name))
+                        .is_some())
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    if matches.len() == 1 {
+        return Ok(matches[0].clone());
+    }
+    Err(anyhow!(
+        "node {requested} is not one unambiguous directly-authored layer owner or component-instance child"
+    ))
+}
+
+fn layer_owner_span(source: &str, owner: &DirectLayerOwner) -> Result<(usize, usize)> {
+    let (start, _, close) =
+        block_from_source_span(source, owner.span_start, owner.span_end, &owner.id)?;
+    let bytes = source.as_bytes();
+    let mut end = close + 1;
+    while end < bytes.len() && matches!(bytes[end], b' ' | b'\t' | b'\r') {
+        end += 1;
+    }
+    if end + 1 < bytes.len() && bytes[end] == b'/' && bytes[end + 1] == b'/' {
+        end = skip_line_comment(bytes, end + 2);
+    }
+    if end < bytes.len() && bytes[end] == b'\n' {
+        end += 1;
+    }
+    Ok((start, end))
 }
 
 fn encode_value(v: &Value) -> String {
@@ -506,6 +566,49 @@ pub fn add_source_constraint(
     Ok(out)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodePlacement {
+    Before,
+    After,
+}
+
+impl std::str::FromStr for NodePlacement {
+    type Err = String;
+
+    fn from_str(value: &str) -> std::result::Result<Self, Self::Err> {
+        match value {
+            "before" => Ok(Self::Before),
+            "after" => Ok(Self::After),
+            _ => Err(format!(
+                "unknown node placement {value:?}; expected before or after"
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct DirectSourceNode {
+    pub index: usize,
+    pub id: String,
+    pub name: String,
+    pub kind: String,
+    pub line: usize,
+}
+
+pub fn direct_source_nodes(source: &str) -> Result<Vec<DirectSourceNode>> {
+    Ok(direct_layer_owners(source)?
+        .into_iter()
+        .enumerate()
+        .map(|(index, owner)| DirectSourceNode {
+            index,
+            id: owner.id,
+            name: owner.name,
+            kind: owner.kind,
+            line: owner.line,
+        })
+        .collect())
+}
+
 fn valid_source_ident(value: &str) -> bool {
     !value.is_empty()
         && value
@@ -540,6 +643,67 @@ fn direct_node_reference(source: &str, requested: &str) -> Result<(String, Strin
     Err(anyhow!(
         "node {requested} has no unambiguous identifier usable by structural group source"
     ))
+}
+
+pub fn move_source_node(
+    source: &str,
+    node_id: &str,
+    anchor_id: &str,
+    placement: NodePlacement,
+) -> Result<String> {
+    let owner = resolve_layer_owner(source, node_id)?;
+    let anchor = resolve_layer_owner(source, anchor_id)?;
+    if owner.id == anchor.id && owner.is_instance == anchor.is_instance {
+        return Err(anyhow!("cannot move node {node_id} relative to itself"));
+    }
+    if !owner.is_instance && owner.kind == "group" {
+        return Err(anyhow!(
+            "structural group {} has no independent paint order; reorder its rendered members instead",
+            owner.id
+        ));
+    }
+    if !anchor.is_instance && anchor.kind == "group" {
+        return Err(anyhow!(
+            "structural group {} cannot be a paint-order anchor; choose one of its rendered members",
+            anchor.id
+        ));
+    }
+
+    let before_owners = direct_layer_owners(source)?
+        .into_iter()
+        .map(|candidate| (candidate.id, candidate.is_instance))
+        .collect::<Vec<_>>();
+    let (start, end) = layer_owner_span(source, &owner)?;
+    let block = source[start..end].to_string();
+    let mut without = source.to_string();
+    without.replace_range(start..end, "");
+
+    let anchor_after_removal = resolve_layer_owner(&without, &anchor.id)?;
+    let (anchor_start, anchor_end) = layer_owner_span(&without, &anchor_after_removal)?;
+    let insertion = match placement {
+        NodePlacement::Before => anchor_start,
+        NodePlacement::After => anchor_end,
+    };
+    without.insert_str(insertion, &block);
+    validate_structural_group_source(&without)?;
+
+    let after_owners = direct_layer_owners(&without)?
+        .into_iter()
+        .map(|candidate| (candidate.id, candidate.is_instance))
+        .collect::<Vec<_>>();
+    if before_owners.len() != after_owners.len()
+        || before_owners
+            .iter()
+            .any(|owner| !after_owners.contains(owner))
+        || after_owners
+            .iter()
+            .any(|owner| !before_owners.contains(owner))
+    {
+        return Err(anyhow!(
+            "node reorder changed the directly-authored layer-owner set; refusing source edit"
+        ));
+    }
+    Ok(without)
 }
 
 fn group_member_spans(source: &str, group_id: &str) -> Result<Vec<(String, usize, usize)>> {

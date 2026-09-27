@@ -3574,6 +3574,139 @@ fn source_group_create_add_remove_and_ungroup_round_trip() {
 }
 
 #[test]
+fn source_node_reorder_moves_only_direct_declaration_and_updates_display_order() {
+    let same_line = r##"scene "Same Line" { canvas 100 100; rect a @id("a") { x 0; y 0; width 10; height 10; } rect b @id("b") { x 20; y 0; width 10; height 10; } rect c @id("c") { x 40; y 0; width 10; height 10; } }"##;
+    assert_eq!(
+        glyph::direct_source_nodes(same_line)
+            .unwrap()
+            .iter()
+            .map(|node| node.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["a", "b", "c"]
+    );
+    let same_line_moved =
+        glyph::move_source_node(same_line, "c", "a", glyph::NodePlacement::Before).unwrap();
+    let same_line_scene = parse_scene(&same_line_moved, "same-line-reorder.glyph").unwrap();
+    assert_eq!(
+        same_line_scene
+            .nodes
+            .iter()
+            .map(|node| node.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["c", "a", "b"]
+    );
+
+    let src = r##"scene "Reorder" {
+  canvas 320 220;
+  rect first @id("first-id") {
+    // keep this authored block intact
+    x 20px; y 20px; width 40px; height 40px; fill "#111111";
+  }
+  rect second @id("second-id") { x 80px; y 20px; width 40px; height 40px; fill "#222222"; }
+  rect third @id("third-id") { x 140px; y 20px; width 40px; height 40px; fill "#333333"; }
+  constrain first-id.x <= 200px @required;
+}"##;
+    let moved =
+        glyph::move_source_node(src, "third-id", "first-id", glyph::NodePlacement::Before).unwrap();
+    assert!(
+        moved.find("third @id").unwrap() < moved.find("first @id").unwrap(),
+        "{moved}"
+    );
+    assert!(
+        moved.contains("// keep this authored block intact\n    x 20px; y 20px; width 40px; height 40px; fill \"#111111\";"),
+        "{moved}"
+    );
+    assert!(moved.contains("constrain first-id.x <= 200px @required;"));
+
+    let mut scene = parse_scene(&moved, "reordered.glyph").unwrap();
+    solve_scene(&mut scene);
+    assert_eq!(
+        scene
+            .nodes
+            .iter()
+            .map(|node| node.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["third-id", "first-id", "second-id"]
+    );
+    assert_eq!(
+        glyph::build_display_list(&scene)
+            .items
+            .iter()
+            .map(|item| item.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["third-id", "first-id", "second-id"]
+    );
+
+    let moved_after =
+        glyph::move_source_node(&moved, "third-id", "second-id", glyph::NodePlacement::After)
+            .unwrap();
+    let scene = parse_scene(&moved_after, "reordered-after.glyph").unwrap();
+    assert_eq!(
+        scene
+            .nodes
+            .iter()
+            .map(|node| node.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["first-id", "second-id", "third-id"]
+    );
+}
+
+#[test]
+fn source_node_reorder_moves_component_instance_as_one_layer_owner_and_fails_closed_on_ambiguity() {
+    let src = r##"scene "Reorder Instance" {
+  canvas 320 220;
+  component card {
+    rect bg @id("bg") { x 0px; y 0px; width 80px; height 40px; }
+    text label @id("label") { content "Card"; x 8px; y 24px; size 14px; }
+  }
+  rect first @id("first") { x 20px; y 20px; width 40px; height 40px; }
+  instance card card1 @id("card1") { x 120px; y 20px; }
+  rect second @id("second") { x 220px; y 20px; width 40px; height 40px; }
+}"##;
+
+    let hierarchy = glyph::direct_source_nodes(src).unwrap();
+    assert_eq!(
+        hierarchy
+            .iter()
+            .map(|node| (node.id.as_str(), node.kind.as_str()))
+            .collect::<Vec<_>>(),
+        vec![
+            ("first", "rect"),
+            ("card1", "instance:card"),
+            ("second", "rect")
+        ]
+    );
+
+    let moved =
+        glyph::move_source_node(src, "card1/bg", "first", glyph::NodePlacement::Before).unwrap();
+    assert!(moved.find("instance card card1").unwrap() < moved.find("rect first").unwrap());
+    let mut scene = parse_scene(&moved, "reorder-instance.glyph").unwrap();
+    solve_scene(&mut scene);
+    assert_eq!(
+        glyph::build_display_list(&scene)
+            .items
+            .iter()
+            .map(|item| item.id.as_str())
+            .collect::<Vec<_>>(),
+        vec!["card1/bg", "card1/label", "first", "second"]
+    );
+
+    let same =
+        glyph::move_source_node(&moved, "card1/label", "card1", glyph::NodePlacement::Before)
+            .unwrap_err();
+    assert!(same.to_string().contains("relative to itself"), "{same}");
+
+    let local_definition =
+        glyph::move_source_node(src, "bg", "first", glyph::NodePlacement::Before).unwrap_err();
+    assert!(
+        local_definition
+            .to_string()
+            .contains("layer owner or component-instance child"),
+        "{local_definition}"
+    );
+}
+
+#[test]
 fn source_group_edits_fail_closed_on_ownership_and_parent_dependencies() {
     let src = r##"scene "Hierarchy Guards" {
   canvas 320 220;

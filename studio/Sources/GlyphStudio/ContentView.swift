@@ -73,6 +73,12 @@ struct ContentView: View {
                 .help("Group the selected authored objects (⌘-click in the object ledger to multi-select)")
             Button("Ungroup") { model.ungroupSelected() }
                 .disabled(!model.canUngroupSelection)
+            Button("Send Backward") { model.sendSelectedBackward() }
+                .disabled(!model.canSendBackward)
+                .help("Move the selected directly-authored node one step earlier in source/render order")
+            Button("Bring Forward") { model.bringSelectedForward() }
+                .disabled(!model.canBringForward)
+                .help("Move the selected directly-authored node one step later in source/render order")
             Button(model.isDirty ? "Save source •" : "Save source") { model.saveSource() }
                 .disabled(model.sourceURL == nil || !model.isDirty)
             Button("Run assertions") { model.runAssertions() }

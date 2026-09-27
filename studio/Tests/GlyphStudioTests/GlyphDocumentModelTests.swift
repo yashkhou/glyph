@@ -430,3 +430,89 @@ extension GlyphDocumentModelTests {
         XCTAssertEqual(model.displayList?.objectMap["group"]?.bounds, [40, 50, 170, 80])
     }
 }
+
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStudioSourceHierarchyReorderAndUndoRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-reorder-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("reorder.glyph")
+        let source = #"""
+        scene "Studio Reorder" {
+          canvas 360 240;
+          rect first @id("first") { x 20px; y 30px; width 100px; height 80px; fill "#334455"; }
+          rect second @id("second") { x 40px; y 50px; width 100px; height 80px; fill "#556677"; }
+          rect third @id("third") { x 60px; y 70px; width 100px; height 80px; fill "#778899"; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["first", "second", "third"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "second", "third"])
+
+        model.select("second")
+        XCTAssertTrue(model.canSendBackward)
+        XCTAssertTrue(model.canBringForward)
+        model.sendSelectedBackward()
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["second", "first", "third"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["second", "first", "third"])
+        XCTAssertTrue(model.canUndo)
+
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["first", "second", "third"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "second", "third"])
+
+        model.bringSelectedForward()
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["first", "third", "second"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "third", "second"])
+    }
+}
+
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStudioReordersSelectedComponentChildByMovingItsInstanceOwner() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-instance-reorder-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("instance-reorder.glyph")
+        let source = #"""
+        scene "Studio Instance Reorder" {
+          canvas 420 260;
+          component card {
+            rect bg @id("bg") { x 0px; y 0px; width 80px; height 40px; fill "#334455"; }
+            text label @id("label") { content "Card"; x 8px; y 24px; size 14px; fill "#ffffff"; }
+          }
+          rect first @id("first") { x 20px; y 30px; width 80px; height 60px; fill "#111111"; }
+          instance card card1 @id("card1") { x 120px; y 30px; }
+          rect second @id("second") { x 240px; y 30px; width 80px; height 60px; fill "#222222"; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["first", "card1", "second"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "card1/bg", "card1/label", "second"])
+
+        model.select("card1/bg")
+        XCTAssertTrue(model.canSendBackward)
+        XCTAssertTrue(model.canBringForward)
+        model.sendSelectedBackward()
+        XCTAssertEqual(model.selectedID, "card1/bg")
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["card1", "first", "second"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["card1/bg", "card1/label", "first", "second"])
+
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.sourceHierarchy.map(\.id), ["first", "card1", "second"])
+        XCTAssertEqual(model.displayList?.items.map(\.id), ["first", "card1/bg", "card1/label", "second"])
+    }
+}

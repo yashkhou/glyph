@@ -22,6 +22,18 @@ struct DisplayCanvas: Decodable {
     let background: String?
 }
 
+struct DirectSourceNode: Decodable, Identifiable {
+    let index: Int
+    let id: String
+    let name: String
+    let kind: String
+    let line: Int
+}
+
+struct HierarchyReport: Decodable {
+    let nodes: [DirectSourceNode]
+}
+
 struct DisplayItem: Decodable, Identifiable {
     let id: String
     let name: String

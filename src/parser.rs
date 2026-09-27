@@ -1208,23 +1208,27 @@ pub fn parse_import_specs(input: &str) -> Result<Vec<ImportSpec>> {
     Ok(imports)
 }
 
-pub fn direct_authored_node_identity(
+pub(crate) fn direct_authored_node_records(
     input: &str,
-    node_id: &str,
-) -> Result<(String, String, usize)> {
+) -> Result<Vec<(String, String, String, usize)>> {
     let mut parsed = GlyphParser::parse(Rule::file, input).context("Glyph parse failed")?;
     let file = parsed.next().context("missing file")?;
     let scene_pair = file
         .into_inner()
         .find(|item| item.as_rule() == Rule::scene)
         .context("missing scene")?;
+    let mut records = Vec::new();
     for item in scene_pair.into_inner() {
         if item.as_rule() != Rule::node {
             continue;
         }
         let line = line_of(&item);
         let mut bits = item.into_inner();
-        let _kind = bits.next().context("missing node kind")?;
+        let kind = bits
+            .next()
+            .context("missing node kind")?
+            .as_str()
+            .to_string();
         let name = bits
             .next()
             .context("missing node name")?
@@ -1241,6 +1245,16 @@ pub fn direct_authored_node_identity(
                     .as_str(),
             );
         }
+        records.push((id, name, kind, line));
+    }
+    Ok(records)
+}
+
+pub fn direct_authored_node_identity(
+    input: &str,
+    node_id: &str,
+) -> Result<(String, String, usize)> {
+    for (id, name, _kind, line) in direct_authored_node_records(input)? {
         if id == node_id || name == node_id {
             return Ok((id, name, line));
         }

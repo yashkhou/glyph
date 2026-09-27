@@ -89,6 +89,10 @@ glyph constraints scene.glyph --node card
 glyph constraint-edit scene.glyph 2 --strength strong --offset 8px --output scene.constraint-edited.glyph
 glyph constraint-remove scene.glyph 3 --output scene.constraint-removed.glyph
 glyph constraint-add scene.glyph card.left ge 0 --strength required --output scene.constraint-added.glyph
+glyph group-create scene.glyph card title --name hero --output scene.grouped.glyph
+glyph group-add-member scene.glyph hero badge --output scene.group-expanded.glyph
+glyph group-remove-member scene.glyph hero badge --output scene.group-reduced.glyph
+glyph group-remove scene.glyph hero --output scene.ungrouped.glyph
 ```
 
 ## Commander integration
@@ -114,7 +118,7 @@ The plugin executes the release binary at `target/release/glyph`. PNG and PDF de
 - renderer conformance and target reports distinguish exact/degraded/unsupported behavior instead of implying pixel equivalence;
 - direct manipulation v1 edits free authored coordinates, translates paths through affine `translate_x`/`translate_y` without rewriting `d`, co-edits compatible equality offsets, preserves inequalities as feasibility guards, and inverts unambiguous typed component bindings back into instance `param` edits; semantic rect/image/ellipse/text-frame resize follows the same source-authoritative contract; Studio exposes explicit edge/corner handles, structural groups own validated membership and translate their leaf members semantically, and unrotated paths support source-authoritative affine resize including compatible translate relations and explicit component affine bindings; unsupported inverse intent fails closed;
 - authored constraints are first-class source edit targets: relation, strength and offset can be changed surgically; constraints can be removed or added; semantic reparsing rejects dimensionally invalid edits; Studio surfaces constraint badges and inspector controls instead of forcing raw-text surgery;
-- Studio semantic undo/redo restores validated source snapshots rather than canvas-only state;
+- Studio semantic undo/redo restores validated source snapshots rather than canvas-only state; multi-selection can now create and remove structural groups through the same source-authoritative transaction path;
 - language tooling reuses the production parser/solver/accessibility contracts: diagnostics preserve parse locations, completions are context-aware, project files resolve local imports against unsaved entry overlays, and `glyph lsp` now exposes UTF-16-safe incremental sync, definition/references, fail-closed top-level node rename, accessibility quick fixes, diagnostics and completion over standard stdio JSON-RPC;
 - CoreText typography, bounded Vision import, sampled motion, and the native Studio are present as scoped v1 implementations.
 

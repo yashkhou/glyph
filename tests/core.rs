@@ -3147,3 +3147,94 @@ fn language_code_action_fixes_missing_accessible_name() {
             .any(|diagnostic| diagnostic.code == "glyph.accessibility.missing_accessible_name")
     );
 }
+
+#[test]
+fn source_group_create_add_remove_and_ungroup_round_trip() {
+    let src = r##"scene "Hierarchy" {
+  canvas 400 260;
+  rect first @id("first-id") { x 20px; y 30px; width 80px; height 40px; }
+  rect second @id("second-id") { x 140px; y 50px; width 60px; height 50px; }
+  rect third @id("third-id") { x 240px; y 80px; width 40px; height 30px; }
+}"##;
+    let members = vec!["first-id".to_string(), "second-id".to_string()];
+    let (grouped, group_id) = glyph::create_source_group(src, None, &members).unwrap();
+    assert_eq!(group_id, "group");
+    assert!(grouped.contains("group group {"), "{grouped}");
+    assert!(grouped.contains("member first-id;"), "{grouped}");
+    assert!(grouped.contains("member second-id;"), "{grouped}");
+    let mut scene = parse_scene(&grouped, "hierarchy.glyph").unwrap();
+    solve_scene(&mut scene);
+    let group = scene.nodes.iter().find(|node| node.id == "group").unwrap();
+    assert_eq!(group.members, vec!["first-id", "second-id"]);
+    assert_eq!(
+        glyph::query::bounds_in_scene(&scene, group),
+        Some([20.0, 30.0, 180.0, 70.0])
+    );
+
+    let expanded = glyph::add_source_group_member(&grouped, "group", "third-id").unwrap();
+    let scene = parse_scene(&expanded, "hierarchy-expanded.glyph").unwrap();
+    assert_eq!(
+        scene
+            .nodes
+            .iter()
+            .find(|node| node.id == "group")
+            .unwrap()
+            .members,
+        vec!["first-id", "second-id", "third-id"]
+    );
+
+    let reduced = glyph::remove_source_group_member(&expanded, "group", "second-id").unwrap();
+    let scene = parse_scene(&reduced, "hierarchy-reduced.glyph").unwrap();
+    assert_eq!(
+        scene
+            .nodes
+            .iter()
+            .find(|node| node.id == "group")
+            .unwrap()
+            .members,
+        vec!["first-id", "third-id"]
+    );
+
+    let ungrouped = glyph::remove_source_group(&reduced, "group").unwrap();
+    let scene = parse_scene(&ungrouped, "hierarchy-ungrouped.glyph").unwrap();
+    assert!(scene.nodes.iter().all(|node| node.id != "group"));
+    assert!(scene.nodes.iter().any(|node| node.id == "first-id"));
+    assert!(scene.nodes.iter().any(|node| node.id == "third-id"));
+}
+
+#[test]
+fn source_group_edits_fail_closed_on_ownership_and_parent_dependencies() {
+    let src = r##"scene "Hierarchy Guards" {
+  canvas 320 220;
+  rect a @id("a") { x 20px; y 20px; width 40px; height 40px; }
+  rect b @id("b") { x 80px; y 20px; width 40px; height 40px; }
+  rect c @id("c") { x 140px; y 20px; width 40px; height 40px; }
+  group inner @id("inner") { member a; member b; }
+  group outer @id("outer") { member inner; member c; }
+}"##;
+    let owned = glyph::add_source_group_member(src, "outer", "a").unwrap_err();
+    assert!(owned.to_string().contains("already belongs"), "{owned}");
+
+    let duplicate =
+        glyph::create_source_group(src, Some("new_group"), &["c".to_string(), "c".to_string()])
+            .unwrap_err();
+    assert!(
+        duplicate.to_string().contains("selected more than once")
+            || duplicate.to_string().contains("already belongs"),
+        "{duplicate}"
+    );
+
+    let parent = glyph::remove_source_group(src, "inner").unwrap_err();
+    assert!(
+        parent.to_string().contains("parent group outer"),
+        "{parent}"
+    );
+
+    let invalid_name =
+        glyph::create_source_group(src, Some("bad/name"), &["a".to_string(), "b".to_string()])
+            .unwrap_err();
+    assert!(
+        invalid_name.to_string().contains("safe top-level"),
+        "{invalid_name}"
+    );
+}

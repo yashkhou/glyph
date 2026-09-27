@@ -381,3 +381,52 @@ extension GlyphDocumentModelTests {
         XCTAssertEqual(model.displayList?.objectMap["pair"]?.bounds, [40, 50, 80, 100])
     }
 }
+
+
+extension GlyphDocumentModelTests {
+    @MainActor
+    func testStudioMultiSelectGroupingAndUngroupRoundTrip() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("glyph-studio-grouping-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let sourceURL = directory.appendingPathComponent("grouping.glyph")
+        let source = #"""
+        scene "Studio Grouping" {
+          canvas 420 260;
+          rect first @id("first") { x 40px; y 50px; width 80px; height 40px; }
+          rect second @id("second") { x 150px; y 80px; width 60px; height 50px; }
+          rect third @id("third") { x 250px; y 120px; width 40px; height 30px; }
+        }
+        """#
+        try source.write(to: sourceURL, atomically: true, encoding: .utf8)
+        let model = GlyphDocumentModel()
+        model.open(sourceURL)
+        XCTAssertTrue(model.lastCheckOK)
+
+        model.select("first")
+        model.select("second", extending: true)
+        XCTAssertEqual(model.selectedIDs, Set(["first", "second"]))
+        XCTAssertTrue(model.canGroupSelection)
+
+        model.groupSelection()
+        let grouped = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertTrue(grouped.contains("group group {"), grouped)
+        XCTAssertTrue(grouped.contains("member first;"), grouped)
+        XCTAssertTrue(grouped.contains("member second;"), grouped)
+        XCTAssertEqual(model.selectedID, "group")
+        XCTAssertEqual(model.selectedIDs, Set(["group"]))
+        XCTAssertTrue(model.canUngroupSelection)
+        XCTAssertEqual(model.displayList?.objectMap["group"]?.bounds, [40, 50, 170, 80])
+
+        model.ungroupSelected()
+        let ungrouped = try String(contentsOf: sourceURL, encoding: .utf8)
+        XCTAssertFalse(ungrouped.contains("group group {"), ungrouped)
+        XCTAssertNil(model.displayList?.objectMap["group"])
+        XCTAssertTrue(model.selectedIDs.isEmpty)
+
+        model.undoSemanticEdit()
+        XCTAssertEqual(model.displayList?.objectMap["group"]?.bounds, [40, 50, 170, 80])
+    }
+}

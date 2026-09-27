@@ -2,15 +2,15 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Parser, Subcommand};
 use glyph::{
     ConstraintRhs, PatchOperation, PropertyRef, Relation, ResizeHandle, Scene, Strength, Unit,
-    Value, accessibility_report, add_source_constraint, apply_direct_handle_resize_source,
-    apply_direct_manipulation_source, apply_direct_resize_source, apply_transaction,
-    build_display_list,
+    Value, accessibility_report, add_source_constraint, add_source_group_member,
+    apply_direct_handle_resize_source, apply_direct_manipulation_source,
+    apply_direct_resize_source, apply_transaction, build_display_list, create_source_group,
     diff::diff_scenes,
     evaluate_assertions, load_project_scene, plan_direct_manipulation, plan_direct_resize,
-    plan_direct_resize_from_handle, query, remove_source_constraint, render_svg,
-    renderer_conformance_report, sample_motion, scene_in_state, set_source_constraint_offset,
-    set_source_constraint_relation, set_source_constraint_strength, set_source_property,
-    solve_scene, target_strategy_report,
+    plan_direct_resize_from_handle, query, remove_source_constraint, remove_source_group,
+    remove_source_group_member, render_svg, renderer_conformance_report, sample_motion,
+    scene_in_state, set_source_constraint_offset, set_source_constraint_relation,
+    set_source_constraint_strength, set_source_property, solve_scene, target_strategy_report,
     vision::{default_vision_helper, import_image_to_glyph},
 };
 use serde::Deserialize;
@@ -156,6 +156,34 @@ enum Command {
         offset: Option<String>,
         #[arg(long, default_value = "required")]
         strength: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    GroupCreate {
+        input: PathBuf,
+        members: Vec<String>,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    GroupAddMember {
+        input: PathBuf,
+        group: String,
+        member: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    GroupRemoveMember {
+        input: PathBuf,
+        group: String,
+        member: String,
+        #[arg(short, long)]
+        output: PathBuf,
+    },
+    GroupRemove {
+        input: PathBuf,
+        group: String,
         #[arg(short, long)]
         output: PathBuf,
     },
@@ -646,6 +674,61 @@ fn main() -> Result<()> {
             )?;
             fs::write(&output, edited)?;
             print_json(&serde_json::json!({"ok":true,"input":input,"output":output,"added":true}))
+        }
+        Command::GroupCreate {
+            input,
+            members,
+            name,
+            output,
+        } => {
+            require_glyph_source(&input, "group-create")?;
+            let source = fs::read_to_string(&input)?;
+            let (edited, group) = create_source_group(&source, name.as_deref(), &members)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"group":group,"members":members}),
+            )
+        }
+        Command::GroupAddMember {
+            input,
+            group,
+            member,
+            output,
+        } => {
+            require_glyph_source(&input, "group-add-member")?;
+            let source = fs::read_to_string(&input)?;
+            let edited = add_source_group_member(&source, &group, &member)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"group":group,"member":member,"added":true}),
+            )
+        }
+        Command::GroupRemoveMember {
+            input,
+            group,
+            member,
+            output,
+        } => {
+            require_glyph_source(&input, "group-remove-member")?;
+            let source = fs::read_to_string(&input)?;
+            let edited = remove_source_group_member(&source, &group, &member)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"group":group,"member":member,"removed":true}),
+            )
+        }
+        Command::GroupRemove {
+            input,
+            group,
+            output,
+        } => {
+            require_glyph_source(&input, "group-remove")?;
+            let source = fs::read_to_string(&input)?;
+            let edited = remove_source_group(&source, &group)?;
+            fs::write(&output, edited)?;
+            print_json(
+                &serde_json::json!({"ok":true,"input":input,"output":output,"group":group,"removed":true}),
+            )
         }
         Command::DragPlan {
             input,

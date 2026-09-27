@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import SwiftUI
 
@@ -67,6 +68,11 @@ struct ContentView: View {
                 .disabled(!model.canUndo || model.isDirty)
             Button("Redo") { model.redoSemanticEdit() }
                 .disabled(!model.canRedo || model.isDirty)
+            Button("Group") { model.groupSelection() }
+                .disabled(!model.canGroupSelection)
+                .help("Group the selected authored objects (⌘-click in the object ledger to multi-select)")
+            Button("Ungroup") { model.ungroupSelected() }
+                .disabled(!model.canUngroupSelection)
             Button(model.isDirty ? "Save source •" : "Save source") { model.saveSource() }
                 .disabled(model.sourceURL == nil || !model.isDirty)
             Button("Run assertions") { model.runAssertions() }
@@ -90,13 +96,15 @@ struct ContentView: View {
                 LazyVStack(spacing: 0) {
                     ForEach(model.displayList?.items ?? []) { item in
                         Button {
-                            model.selectedID = item.id
+                            let extending = NSEvent.modifierFlags.contains(.command)
+                                || NSEvent.modifierFlags.contains(.shift)
+                            model.select(item.id, extending: extending)
                             patchProperty = ""
                             patchValue = ""
                         } label: {
                             HStack(spacing: 9) {
                                 Rectangle()
-                                    .fill(model.selectedID == item.id ? Color.accentColor : Color.secondary.opacity(0.22))
+                                    .fill(model.selectedIDs.contains(item.id) ? Color.accentColor : Color.secondary.opacity(0.22))
                                     .frame(width: 2, height: 30)
                                 VStack(alignment: .leading, spacing: 3) {
                                     HStack(spacing: 5) {
@@ -146,7 +154,7 @@ struct ContentView: View {
                         svg: model.svg,
                         selectedID: model.selectedID,
                         onSelect: { id in
-                            model.selectedID = id
+                            model.select(id)
                             patchProperty = ""
                             patchValue = ""
                             resizePreview = .zero

@@ -60,13 +60,13 @@ Working today:
 - Dimensional units/types, source/GSIR versioning + migration, typed components/slots/variants/overrides, and local project imports are implemented.
 - Canonical graphics now include image nodes, affine transforms, resolved clip/mask references, and typed linear/radial paints in display-list schema v3.
 - Direct manipulation now candidate-validates compatible multi-constraint intent: equality offsets can co-edit, inequalities stay feasibility guards, and unsafe/newly-relaxed intent fails closed.
-- Semantic resize supports rect/image/ellipse plus explicit text wrap frames; Studio exposes edge/corner handles with opposite-anchor preservation. Structural groups own validated membership and translate leaf members through semantic plans. Unrotated paths preserve authored `d`, can co-edit compatible translate constraints, and component-owned paths invert explicit affine parameter bindings when unambiguous.
+- Semantic resize supports rect/image/ellipse plus explicit text wrap frames; Studio exposes edge/corner handles with opposite-anchor preservation. Structural groups own validated membership, translate leaf members through semantic plans, and now support source-authoritative create/add/remove/ungroup operations plus Studio multi-selection grouping. Unrotated paths preserve authored `d`, can co-edit compatible translate constraints, and component-owned paths invert explicit affine parameter bindings when unambiguous.
 
 Live `glyph capabilities` reports GSIR canonical, source schema v1 / GSIR schema v2, Cassowary-class weighted linear solver v1, display-list/object-map v3, typed paints/transforms/clips/masks, CoreText-backed text semantics, source-backed constraint/direct-manipulation APIs, deterministic language diagnostics/context completion/definition/references/safe rename/quick fixes with UTF-16-safe incremental stdio LSP v1, Studio v0.1, sampled motion v1, visual diff v1, accessibility audit v1, and bounded Apple Vision import v1.
 ## Verified evidence at handoff
 
-- Rust suite: **119/119 passing total** (117 integration tests + 2 LSP synchronization unit tests).
-- Native Studio integration suite: **7/7 passing**.
+- Rust suite: **121/121 passing total** (119 integration tests + 2 LSP synchronization unit tests).
+- Native Studio integration suite: **8/8 passing**.
 - `cargo fmt --check`: passing.
 - Release build: passing.
 - Full `./scripts/verify.sh`: passing, including source-backed free/relation/component/path drag, rect/component/path resize, constraint editing, SVG/PNG/PDF export and Studio integration tests.

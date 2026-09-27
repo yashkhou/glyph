@@ -10,6 +10,7 @@ final class GlyphDocumentModel: ObservableObject {
     @Published var lastVisualDiff: VisualDiffReport?
     @Published var svg = ""
     @Published var selectedID: String?
+    @Published var selectedIDs: Set<String> = []
     @Published var status = "Open a .glyph file"
     @Published var error: String?
     @Published var isDirty = false
@@ -36,6 +37,36 @@ final class GlyphDocumentModel: ObservableObject {
     var selectedConstraints: [ConstraintRecord] {
         guard let id = selectedID else { return [] }
         return constraints.filter { $0.involves(id) }
+    }
+
+    var canGroupSelection: Bool { selectedIDs.count >= 2 && !isDirty }
+
+    var canUngroupSelection: Bool {
+        !isDirty && selectedIDs.count == 1 && selectedItem?.primitive.kind == "group"
+    }
+
+    func select(_ id: String, extending: Bool = false) {
+        if extending {
+            if selectedIDs.contains(id) {
+                selectedIDs.remove(id)
+                if selectedID == id {
+                    selectedID = selectedIDs.first
+                }
+            } else {
+                selectedIDs.insert(id)
+                selectedID = id
+            }
+        } else {
+            selectedIDs = [id]
+            selectedID = id
+        }
+        selectedConstraintID = nil
+    }
+
+    func clearSelection() {
+        selectedID = nil
+        selectedIDs.removeAll()
+        selectedConstraintID = nil
     }
 
     func openPanel() {
@@ -89,6 +120,7 @@ final class GlyphDocumentModel: ObservableObject {
             lastKnownModificationDate = modificationDate(url)
             isDirty = false
             selectedID = nil
+            selectedIDs.removeAll()
             selectedConstraintID = nil
             constraints = []
             lastVisualDiff = nil
@@ -172,7 +204,7 @@ final class GlyphDocumentModel: ObservableObject {
             lastManipulationPlan = nil
             lastResizePlan = nil
             lastHandleResizePlan = nil
-            selectedID = node
+            select(node)
             status = "Patched \(node).\(property)"
         } catch {
             self.error = error.localizedDescription
@@ -223,6 +255,66 @@ final class GlyphDocumentModel: ObservableObject {
         }
     }
 
+    func groupSelection() {
+        guard let url = sourceURL, canGroupSelection else { return }
+        let ordered = displayList?.items
+            .filter { selectedIDs.contains($0.id) }
+            .map(\.id) ?? Array(selectedIDs).sorted()
+        guard ordered.count >= 2 else { return }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-group-\(UUID().uuidString).glyph")
+        defer {
+            try? FileManager.default.removeItem(at: temporary)
+            try? FileManager.default.removeItem(at: beforeURL)
+        }
+        do {
+            try sourceText.write(to: beforeURL, atomically: true, encoding: .utf8)
+            let resultText = try runGlyph(["group-create", beforeURL.path] + ordered + ["--output", temporary.path])
+            _ = try runGlyph(["check", temporary.path])
+            let result = try JSONSerialization.jsonObject(with: Data(resultText.utf8)) as? [String: Any]
+            let groupID = result?["group"] as? String
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(sourceText)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            if let groupID {
+                select(groupID)
+            } else {
+                clearSelection()
+            }
+            status = "Grouped \(ordered.count) objects"
+        } catch {
+            self.error = error.localizedDescription
+            status = "Grouping rejected"
+        }
+    }
+
+    func ungroupSelected() {
+        guard let url = sourceURL, canUngroupSelection, let groupID = selectedID else { return }
+        let directory = url.deletingLastPathComponent()
+        let beforeURL = directory.appendingPathComponent(".glyphstudio-before-\(UUID().uuidString).glyph")
+        let temporary = directory.appendingPathComponent(".glyphstudio-ungroup-\(UUID().uuidString).glyph")
+        defer {
+            try? FileManager.default.removeItem(at: temporary)
+            try? FileManager.default.removeItem(at: beforeURL)
+        }
+        do {
+            try sourceText.write(to: beforeURL, atomically: true, encoding: .utf8)
+            _ = try runGlyph(["group-remove", beforeURL.path, groupID, "--output", temporary.path])
+            _ = try runGlyph(["check", temporary.path])
+            let replacement = try String(contentsOf: temporary, encoding: .utf8)
+            pushUndo(sourceText)
+            try commitSource(replacement, to: url)
+            updateVisualDiff(beforeURL: beforeURL, afterURL: url)
+            clearSelection()
+            status = "Ungrouped \(groupID)"
+        } catch {
+            self.error = error.localizedDescription
+            status = "Ungroup rejected"
+        }
+    }
+
     func drag(node: String, dx: Double, dy: Double) {
         guard let url = sourceURL else { return }
         guard !isDirty else {
@@ -251,7 +343,7 @@ final class GlyphDocumentModel: ObservableObject {
             pushUndo(sourceText)
             try commitSource(replacement, to: url)
             updateVisualDiff(beforeURL: beforeURL, afterURL: url)
-            selectedID = node
+            select(node)
             status = String(format: "Moved %@ · Δ %.1f, %.1f", node, dx, dy)
         } catch {
             self.error = error.localizedDescription

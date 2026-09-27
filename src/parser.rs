@@ -10,7 +10,10 @@ use std::collections::{BTreeMap, BTreeSet};
 struct GlyphParser;
 
 fn unquote(raw: &str) -> String {
-    raw.trim_matches('"').replace("\\\"", "\"")
+    raw.trim_matches('"')
+        .replace("\\\"", "\"")
+        .replace("\\n", "\n")
+        .replace("\\r", "\r")
 }
 fn line_of(pair: &Pair<Rule>) -> usize {
     pair.as_span().start_pos().line_col().0

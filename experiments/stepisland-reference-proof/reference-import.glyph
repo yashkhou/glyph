@@ -1,0 +1,221 @@
+scene "Vision Import: 01-Walking-Somewhere-To-Go.png" @id("vision_01_walking_somewhere_to_go") {
+  canvas 1320 2868 background "#e8f5fa";
+  meta "vision.source" "/Users/joshuakhoury/Projects/StepIsland/AppStore/FinalScreenshots/01-Walking-Somewhere-To-Go.png";
+  meta "vision.importer" "apple-vision-v1";
+  meta "vision.reconstruction" "bounded-ocr-and-rectangles";
+
+  text text_5381a43d8ba1 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 66.625; y 111.697;
+    content "STEPISLAND"; size 37.46;
+    font "system-ui"; weight "700"; align "start"; fill "#102e68";
+  }
+
+  ellipse ellipse_2237db4ead0c {
+    role "vision" "inferred" "region";
+    confidence semantics 0.645 geometry 0.861 depth unknown;
+    cx 1149; cy 113.5; rx 19; ry 19.5;
+    fill "#94a572";
+  }
+
+  ellipse ellipse_a315e0128c63 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.681 geometry 0.908 depth unknown;
+    cx 1164.5; cy 169; rx 26.5; ry 32;
+    fill "#f3ede3";
+  }
+
+  text text_8db4b41274ac {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 87.445; y 186.658;
+    content "• A TINY WORLD FOR EVERY WALK"; size 28.833;
+    font "system-ui"; weight "700"; align "start"; fill "#102e68";
+  }
+
+  text text_20073233e6c0 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 70.789; y 315.373;
+    content "Make walking feel"; size 110.731;
+    font "system-ui"; weight "700"; align "start"; fill "#102e68";
+  }
+
+  text text_d65d759cf901 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 60.98; y 386.261;
+    content "like somewhěre to go."; size 123.223;
+    font "system-ui"; weight "400"; align "start"; fill "#102e68";
+  }
+
+  text text_7b2d60241256 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 66.625; y 481.588;
+    content "Your steps bring a world - and a companion - to life."; size 43.357;
+    font "system-ui"; weight "700"; align "start"; fill "#6078a4";
+  }
+
+  rect region_2c5a2779a49f {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 190.783; y 716.841; width 934.303; height 1996.296; rx 0;
+    fill "#dbdcec";
+  }
+
+  text text_2fa7fee3dda7 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 836.533; y 809.942;
+    content "!!!! • 76"; size 50.929;
+    font "system-ui"; weight "700"; align "start"; fill "#000000";
+  }
+
+  text text_fd1f7d0a7451 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 316.467; y 806.365;
+    content "1:01 A"; size 43.613;
+    font "system-ui"; weight "500"; align "start"; fill "#000000";
+  }
+
+  rect region_c37efa0d9192 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 226.841; y 1031.358; width 863.972; height 340.806; rx 0;
+    fill "#f3f5f7";
+  }
+
+  rect region_323fdbe8ac1e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 232.153; y 1371.765; width 852.44; height 783.47; rx 0;
+    fill "#bdd6e6";
+  }
+
+  rect region_01a832754e8a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 251.412; y 1392.757; width 810.71; height 129.017; rx 0;
+    fill "#b7d8ec";
+  }
+
+  ellipse ellipse_b94ae3925cc0 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.693 geometry 0.925 depth unknown;
+    cx 878.5; cy 1461.5; rx 40.5; ry 39.5;
+    fill "#eedca6";
+  }
+
+  ellipse ellipse_3efc2368547a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.656 geometry 0.875 depth unknown;
+    cx 892; cy 1736.5; rx 14; ry 13.5;
+    fill "#d8c9b7";
+  }
+
+  ellipse ellipse_189ef187c632 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.638 geometry 0.85 depth unknown;
+    cx 621.5; cy 1896; rx 40.5; ry 44;
+    fill "#95a574";
+  }
+
+  ellipse ellipse_09f83ae0411a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.643 geometry 0.857 depth unknown;
+    cx 535.5; cy 1897.5; rx 13.5; ry 9.5;
+    fill "#d1d7bb";
+  }
+
+  ellipse ellipse_51d09360f690 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.686 geometry 0.915 depth unknown;
+    cx 1017.5; cy 2006; rx 9.5; ry 13;
+    fill "#bbc4cb";
+  }
+
+  ellipse ellipse_43d4ab946751 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.702 geometry 0.935 depth unknown;
+    cx 1017.5; cy 2028.5; rx 10.5; ry 11.5;
+    fill "#c4ccd2";
+  }
+
+  ellipse ellipse_d6d5cb5bf225 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.655 geometry 0.874 depth unknown;
+    cx 1017; cy 2046; rx 10; ry 13;
+    fill "#ccd2d7";
+  }
+
+  ellipse ellipse_baaa66eb60bd {
+    role "vision" "inferred" "region";
+    confidence semantics 0.645 geometry 0.859 depth unknown;
+    cx 306.5; cy 2056; rx 16.5; ry 16;
+    fill "#fafaf9";
+  }
+
+  ellipse ellipse_61d099b7bf7a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.655 geometry 0.873 depth unknown;
+    cx 1061; cy 2055.5; rx 11; ry 11.5;
+    fill "#dae1dd";
+  }
+
+  ellipse ellipse_ef388e47761e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.671 geometry 0.895 depth unknown;
+    cx 1001.5; cy 2092.5; rx 9.5; ry 9.5;
+    fill "#dde1e4";
+  }
+
+  text text_b282c31f3971 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 657.935; y 2253.113;
+    content "Walking should feel like"; size 77.248;
+    font "system-ui"; weight "500"; align "center"; fill "#00164d";
+  }
+
+  text text_08091284a7ca {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 657.935; y 2337.762;
+    content "somewhere to go."; size 73.667;
+    font "system-ui"; weight "700"; align "center"; fill "#00184e";
+  }
+
+  text text_1a53f7fc4464 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 657.935; y 2400.94;
+    content "Your steps bring a tiny world - and a companion - to life."; size 32.065;
+    font "system-ui"; weight "700"; align "center"; fill "#576e94";
+  }
+
+  rect region_4b50839f2858 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 219.434; y 2480.892; width 863.922; height 134.529; rx 0;
+    fill "#0f275a";
+  }
+
+  rect region_19120eccd2ac {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 18.633; y 2487.61; width 146.666; height 57.561; rx 0;
+    fill "#ebf7fa";
+  }
+
+  text text_7cfdcef0ade1 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 651.395; y 2558.188;
+    content "Continue"; size 33.527;
+    font "system-ui"; weight "700"; align "center"; fill "#ffffff";
+  }
+
+}

@@ -1,0 +1,2073 @@
+{
+  "schema_version": 1,
+  "source": "/Users/joshuakhoury/Projects/Glyph/experiments/night-garden/reference-day.png",
+  "width": 941,
+  "height": 1672,
+  "background": "#99cef9",
+  "observations": [
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 301.73471742868423,
+        "y": 53.22307014465332,
+        "width": 77.8511129617691,
+        "height": 23.903103351593018
+      },
+      "confidence": 1.0,
+      "color": "#a0d1f8",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 12.0993242142722,
+        "y": 74.85883235931396,
+        "width": 61.64677326846868,
+        "height": 39.88401651382446
+      },
+      "confidence": 1.0,
+      "color": "#a8d5f8",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 650.0,
+        "y": 128.0,
+        "width": 108.0,
+        "height": 107.0
+      },
+      "confidence": 0.8718068535825545,
+      "color": "#fdf4e0",
+      "corner_radius": 53.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 137.0,
+        "width": 83.0,
+        "height": 70.0
+      },
+      "confidence": 0.8440619621342512,
+      "color": "#deeef8",
+      "corner_radius": 35.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 117.5132587403059,
+        "y": 198.12790441513064,
+        "width": 95.52799412608148,
+        "height": 133.53075647354126
+      },
+      "confidence": 1.0,
+      "color": "#8fc3d9",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 813.0479706525803,
+        "y": 221.82650756835935,
+        "width": 77.35602444410324,
+        "height": 31.209799766540527
+      },
+      "confidence": 1.0,
+      "color": "#77adc8",
+      "corner_radius": 3.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 26.0,
+        "y": 235.0,
+        "width": 75.0,
+        "height": 54.0
+      },
+      "confidence": 0.8552592592592592,
+      "color": "#a9d1ea",
+      "corner_radius": 27.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 236.0,
+        "width": 53.0,
+        "height": 55.0
+      },
+      "confidence": 0.874442538593482,
+      "color": "#d4e9f8",
+      "corner_radius": 26.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 356.0,
+        "y": 266.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.8476190476190475,
+      "color": "#79b3c6",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 26.0,
+        "y": 349.0,
+        "width": 21.0,
+        "height": 15.0
+      },
+      "confidence": 0.8533333333333333,
+      "color": "#75abb1",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 870.0,
+        "y": 352.0,
+        "width": 71.0,
+        "height": 66.0
+      },
+      "confidence": 0.8774007682458386,
+      "color": "#88b8d4",
+      "corner_radius": 33.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 368.0,
+        "y": 392.0,
+        "width": 33.0,
+        "height": 34.0
+      },
+      "confidence": 0.8705882352941176,
+      "color": "#a5d1dc",
+      "corner_radius": 16.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 408.0,
+        "width": 28.0,
+        "height": 35.0
+      },
+      "confidence": 0.9075510204081632,
+      "color": "#fcbbc4",
+      "corner_radius": 14.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 27.0,
+        "y": 412.0,
+        "width": 33.0,
+        "height": 25.0
+      },
+      "confidence": 0.8527272727272727,
+      "color": "#7cb4b4",
+      "corner_radius": 12.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 738.0,
+        "y": 413.0,
+        "width": 33.0,
+        "height": 42.0
+      },
+      "confidence": 0.8478354978354978,
+      "color": "#8bb9d4",
+      "corner_radius": 16.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 275.0,
+        "y": 426.0,
+        "width": 30.0,
+        "height": 27.0
+      },
+      "confidence": 0.8703703703703703,
+      "color": "#e0ecf4",
+      "corner_radius": 13.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 40.0,
+        "y": 430.0,
+        "width": 41.0,
+        "height": 36.0
+      },
+      "confidence": 0.8794715447154471,
+      "color": "#fcbac3",
+      "corner_radius": 18.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 434.0,
+        "width": 40.0,
+        "height": 37.0
+      },
+      "confidence": 0.8842567567567567,
+      "color": "#fcb1bc",
+      "corner_radius": 18.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 794.0,
+        "y": 435.0,
+        "width": 18.0,
+        "height": 23.0
+      },
+      "confidence": 0.8615942028985506,
+      "color": "#91bdd9",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 107.0,
+        "y": 440.0,
+        "width": 20.0,
+        "height": 30.0
+      },
+      "confidence": 0.8514999999999999,
+      "color": "#75adbc",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 440.0,
+        "y": 448.0,
+        "width": 61.0,
+        "height": 58.0
+      },
+      "confidence": 0.8449123798756359,
+      "color": "#9ac8e1",
+      "corner_radius": 29.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 43.0,
+        "y": 456.0,
+        "width": 35.0,
+        "height": 44.0
+      },
+      "confidence": 0.8733766233766234,
+      "color": "#fdd3d5",
+      "corner_radius": 17.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 78.0,
+        "y": 459.0,
+        "width": 36.0,
+        "height": 32.0
+      },
+      "confidence": 0.85,
+      "color": "#fdcdd1",
+      "corner_radius": 16.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 291.0,
+        "y": 461.0,
+        "width": 22.0,
+        "height": 16.0
+      },
+      "confidence": 0.8542613636363636,
+      "color": "#6aa3b1",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 465.0,
+        "width": 14.0,
+        "height": 21.0
+      },
+      "confidence": 0.9377551020408162,
+      "color": "#f79bac",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 715.0,
+        "y": 479.0,
+        "width": 47.0,
+        "height": 39.0
+      },
+      "confidence": 0.8631751227495907,
+      "color": "#a6cbe2",
+      "corner_radius": 19.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 915.0,
+        "y": 485.0,
+        "width": 26.0,
+        "height": 18.0
+      },
+      "confidence": 0.8865384615384615,
+      "color": "#cee2f0",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 20.13015322946012,
+        "y": 505.026095867157,
+        "width": 31.359171794727445,
+        "height": 52.155423641204834
+      },
+      "confidence": 1.0,
+      "color": "#f094a6",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 113.0,
+        "y": 508.0,
+        "width": 50.0,
+        "height": 68.0
+      },
+      "confidence": 0.8635882352941175,
+      "color": "#faa4b2",
+      "corner_radius": 25.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 513.0,
+        "width": 32.0,
+        "height": 40.0
+      },
+      "confidence": 0.844375,
+      "color": "#f396a9",
+      "corner_radius": 16.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 85.0,
+        "y": 525.0,
+        "width": 37.0,
+        "height": 52.0
+      },
+      "confidence": 0.8526507276507276,
+      "color": "#f598aa",
+      "corner_radius": 18.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 40.0,
+        "y": 532.0,
+        "width": 48.0,
+        "height": 46.0
+      },
+      "confidence": 0.8487771739130434,
+      "color": "#f59cad",
+      "corner_radius": 23.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 307.0,
+        "y": 541.0,
+        "width": 64.0,
+        "height": 74.0
+      },
+      "confidence": 0.8464527027027027,
+      "color": "#99c9c8",
+      "corner_radius": 32.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 173.0,
+        "y": 549.0,
+        "width": 44.0,
+        "height": 41.0
+      },
+      "confidence": 0.896230598669623,
+      "color": "#fdd4d5",
+      "corner_radius": 20.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 126.0,
+        "y": 576.0,
+        "width": 32.0,
+        "height": 38.0
+      },
+      "confidence": 0.8719572368421052,
+      "color": "#fdd4d6",
+      "corner_radius": 16.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 215.0,
+        "y": 599.0,
+        "width": 18.0,
+        "height": 21.0
+      },
+      "confidence": 0.8896825396825396,
+      "color": "#fdd3d6",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 78.0,
+        "y": 614.0,
+        "width": 18.0,
+        "height": 25.0
+      },
+      "confidence": 0.8739999999999999,
+      "color": "#fcc1c9",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 58.0,
+        "y": 628.0,
+        "width": 14.0,
+        "height": 21.0
+      },
+      "confidence": 0.8693877551020408,
+      "color": "#faaebc",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 14.0,
+        "y": 677.0,
+        "width": 19.0,
+        "height": 20.0
+      },
+      "confidence": 0.8736842105263157,
+      "color": "#fbb9c5",
+      "corner_radius": 9.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 75.0,
+        "y": 693.0,
+        "width": 26.0,
+        "height": 24.0
+      },
+      "confidence": 0.85,
+      "color": "#5c9393",
+      "corner_radius": 12.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 418.0,
+        "y": 695.0,
+        "width": 16.0,
+        "height": 23.0
+      },
+      "confidence": 0.8508152173913043,
+      "color": "#e6f0f4",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 553.0,
+        "y": 714.0,
+        "width": 71.0,
+        "height": 56.0
+      },
+      "confidence": 0.8683350100603622,
+      "color": "#99c9dc",
+      "corner_radius": 28.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 18.0,
+        "y": 741.0,
+        "width": 28.0,
+        "height": 20.0
+      },
+      "confidence": 0.87625,
+      "color": "#fdd1d4",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 178.0,
+        "y": 741.0,
+        "width": 16.0,
+        "height": 14.0
+      },
+      "confidence": 0.8486607142857142,
+      "color": "#739d71",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 236.0,
+        "y": 741.0,
+        "width": 26.0,
+        "height": 20.0
+      },
+      "confidence": 0.8592307692307692,
+      "color": "#a5c478",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 920.0,
+        "y": 747.0,
+        "width": 20.0,
+        "height": 20.0
+      },
+      "confidence": 0.868,
+      "color": "#fbd4d7",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 7.0,
+        "y": 748.0,
+        "width": 26.0,
+        "height": 32.0
+      },
+      "confidence": 0.8471153846153845,
+      "color": "#fdcdd0",
+      "corner_radius": 13.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 544.0,
+        "y": 753.0,
+        "width": 41.0,
+        "height": 29.0
+      },
+      "confidence": 0.848107653490328,
+      "color": "#a2cee1",
+      "corner_radius": 14.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 228.0,
+        "y": 764.0,
+        "width": 26.0,
+        "height": 19.0
+      },
+      "confidence": 0.8493927125506072,
+      "color": "#95bd7c",
+      "corner_radius": 9.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 344.0,
+        "y": 764.0,
+        "width": 16.0,
+        "height": 22.0
+      },
+      "confidence": 0.8823863636363636,
+      "color": "#89bdd1",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 749.0,
+        "y": 769.0,
+        "width": 28.0,
+        "height": 37.0
+      },
+      "confidence": 0.8893822393822393,
+      "color": "#c6dbdb",
+      "corner_radius": 14.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 49.0,
+        "y": 774.0,
+        "width": 19.0,
+        "height": 16.0
+      },
+      "confidence": 0.8726973684210526,
+      "color": "#fdd1d3",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 778.0,
+        "width": 43.0,
+        "height": 34.0
+      },
+      "confidence": 0.8906292749658002,
+      "color": "#f59aab",
+      "corner_radius": 17.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 39.0,
+        "y": 780.0,
+        "width": 14.0,
+        "height": 21.0
+      },
+      "confidence": 0.8489795918367347,
+      "color": "#fdbac3",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 83.0,
+        "y": 783.0,
+        "width": 24.0,
+        "height": 33.0
+      },
+      "confidence": 0.8587121212121211,
+      "color": "#f598a9",
+      "corner_radius": 12.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 925.0,
+        "y": 785.0,
+        "width": 16.0,
+        "height": 14.0
+      },
+      "confidence": 0.900892857142857,
+      "color": "#fdd9da",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 925.0,
+        "y": 794.0,
+        "width": 16.0,
+        "height": 15.0
+      },
+      "confidence": 0.8474999999999999,
+      "color": "#fcc3cc",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 283.0,
+        "y": 799.0,
+        "width": 18.0,
+        "height": 20.0
+      },
+      "confidence": 0.8908333333333333,
+      "color": "#699a6b",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 853.0,
+        "y": 821.0,
+        "width": 15.0,
+        "height": 15.0
+      },
+      "confidence": 0.8773333333333333,
+      "color": "#7aab9b",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 691.0,
+        "y": 866.0,
+        "width": 17.0,
+        "height": 17.0
+      },
+      "confidence": 0.8619377162629758,
+      "color": "#4a7269",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 221.0,
+        "y": 868.0,
+        "width": 19.0,
+        "height": 16.0
+      },
+      "confidence": 0.8618421052631579,
+      "color": "#9ab5b5",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 99.0,
+        "y": 879.0,
+        "width": 16.0,
+        "height": 14.0
+      },
+      "confidence": 0.9142857142857144,
+      "color": "#f5e8dd",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 760.0,
+        "y": 885.0,
+        "width": 20.0,
+        "height": 14.0
+      },
+      "confidence": 0.8842857142857142,
+      "color": "#8b9792",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 601.0,
+        "y": 907.0,
+        "width": 41.0,
+        "height": 35.0
+      },
+      "confidence": 0.8657839721254355,
+      "color": "#9899a4",
+      "corner_radius": 17.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 25.0,
+        "y": 912.0,
+        "width": 20.0,
+        "height": 18.0
+      },
+      "confidence": 0.8916666666666666,
+      "color": "#f5e9dd",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 644.0,
+        "y": 926.0,
+        "width": 19.0,
+        "height": 18.0
+      },
+      "confidence": 0.8526315789473684,
+      "color": "#5c7386",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 674.0,
+        "y": 926.0,
+        "width": 29.0,
+        "height": 20.0
+      },
+      "confidence": 0.8463793103448275,
+      "color": "#828b97",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 526.0,
+        "y": 938.0,
+        "width": 46.0,
+        "height": 38.0
+      },
+      "confidence": 0.8652745995423341,
+      "color": "#88b4c7",
+      "corner_radius": 19.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 949.0,
+        "width": 21.0,
+        "height": 17.0
+      },
+      "confidence": 0.8588235294117647,
+      "color": "#779754",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 652.0,
+        "y": 949.0,
+        "width": 15.0,
+        "height": 14.0
+      },
+      "confidence": 0.8985714285714286,
+      "color": "#559daa",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 227.0,
+        "y": 955.0,
+        "width": 14.0,
+        "height": 14.0
+      },
+      "confidence": 0.8622448979591837,
+      "color": "#bce1e9",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 226.0,
+        "y": 975.0,
+        "width": 15.0,
+        "height": 16.0
+      },
+      "confidence": 0.8975,
+      "color": "#838895",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 285.0,
+        "y": 975.0,
+        "width": 19.0,
+        "height": 14.0
+      },
+      "confidence": 0.9142857142857144,
+      "color": "#315b44",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 560.0,
+        "y": 993.0,
+        "width": 35.0,
+        "height": 34.0
+      },
+      "confidence": 0.8623529411764705,
+      "color": "#c1e8f1",
+      "corner_radius": 17.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 110.0,
+        "y": 997.0,
+        "width": 15.0,
+        "height": 21.0
+      },
+      "confidence": 0.8476190476190475,
+      "color": "#345b41",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 127.0,
+        "y": 1001.0,
+        "width": 15.0,
+        "height": 16.0
+      },
+      "confidence": 0.85125,
+      "color": "#396444",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 378.0,
+        "y": 1028.0,
+        "width": 27.0,
+        "height": 23.0
+      },
+      "confidence": 0.8507246376811594,
+      "color": "#95969b",
+      "corner_radius": 11.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 450.0,
+        "y": 1029.0,
+        "width": 34.0,
+        "height": 29.0
+      },
+      "confidence": 0.8509127789046653,
+      "color": "#697584",
+      "corner_radius": 14.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 791.0,
+        "y": 1029.0,
+        "width": 16.0,
+        "height": 15.0
+      },
+      "confidence": 0.8624999999999999,
+      "color": "#a9dae6",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 678.0,
+        "y": 1030.0,
+        "width": 15.0,
+        "height": 14.0
+      },
+      "confidence": 0.86,
+      "color": "#b6d8e5",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 718.0,
+        "y": 1030.0,
+        "width": 17.0,
+        "height": 14.0
+      },
+      "confidence": 0.8752100840336134,
+      "color": "#a9dce9",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 364.0,
+        "y": 1041.0,
+        "width": 17.0,
+        "height": 16.0
+      },
+      "confidence": 0.8488970588235294,
+      "color": "#8c9097",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 717.0,
+        "y": 1042.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.9345238095238096,
+      "color": "#95cbd9",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 1045.0,
+        "width": 17.0,
+        "height": 14.0
+      },
+      "confidence": 0.9331932773109244,
+      "color": "#446b4c",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 366.0,
+        "y": 1048.0,
+        "width": 15.0,
+        "height": 21.0
+      },
+      "confidence": 0.8514285714285714,
+      "color": "#878c94",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 538.0,
+        "y": 1051.0,
+        "width": 37.0,
+        "height": 27.0
+      },
+      "confidence": 0.8849849849849849,
+      "color": "#657484",
+      "corner_radius": 13.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 902.0,
+        "y": 1055.0,
+        "width": 20.0,
+        "height": 24.0
+      },
+      "confidence": 0.8899999999999999,
+      "color": "#c3d1de",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 5.0,
+        "y": 1058.0,
+        "width": 36.0,
+        "height": 27.0
+      },
+      "confidence": 0.861111111111111,
+      "color": "#315741",
+      "corner_radius": 13.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 851.0,
+        "y": 1066.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.9285714285714284,
+      "color": "#c1d5e3",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 309.0,
+        "y": 1067.0,
+        "width": 17.0,
+        "height": 18.0
+      },
+      "confidence": 0.8666666666666666,
+      "color": "#fcd5d7",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 715.0,
+        "y": 1068.0,
+        "width": 35.0,
+        "height": 25.0
+      },
+      "confidence": 0.8937142857142857,
+      "color": "#7db6c6",
+      "corner_radius": 12.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 391.0,
+        "y": 1070.0,
+        "width": 17.0,
+        "height": 14.0
+      },
+      "confidence": 0.8663865546218487,
+      "color": "#5c9ba6",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 47.0,
+        "y": 1085.0,
+        "width": 39.0,
+        "height": 28.0
+      },
+      "confidence": 0.8579670329670329,
+      "color": "#335942",
+      "corner_radius": 14.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 82.0,
+        "y": 1093.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.85,
+      "color": "#628958",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 0.0,
+        "y": 1125.0,
+        "width": 24.0,
+        "height": 26.0
+      },
+      "confidence": 0.8706730769230768,
+      "color": "#274a38",
+      "corner_radius": 12.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 351.0,
+        "y": 1156.0,
+        "width": 18.0,
+        "height": 15.0
+      },
+      "confidence": 0.851111111111111,
+      "color": "#66707d",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 310.0,
+        "y": 1201.0,
+        "width": 18.0,
+        "height": 16.0
+      },
+      "confidence": 0.85,
+      "color": "#b6c65d",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 478.0,
+        "y": 1212.0,
+        "width": 17.0,
+        "height": 14.0
+      },
+      "confidence": 0.8600840336134453,
+      "color": "#48734b",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 30.0,
+        "y": 1217.0,
+        "width": 40.0,
+        "height": 28.0
+      },
+      "confidence": 0.8644642857142857,
+      "color": "#779748",
+      "corner_radius": 14.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 15.0,
+        "y": 1234.0,
+        "width": 45.0,
+        "height": 49.0
+      },
+      "confidence": 0.8527891156462585,
+      "color": "#658741",
+      "corner_radius": 22.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 215.0,
+        "y": 1244.0,
+        "width": 44.0,
+        "height": 40.0
+      },
+      "confidence": 0.848125,
+      "color": "#566472",
+      "corner_radius": 20.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 427.0,
+        "y": 1252.0,
+        "width": 24.0,
+        "height": 17.0
+      },
+      "confidence": 0.8485294117647059,
+      "color": "#fce5be",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 266.0,
+        "y": 1267.0,
+        "width": 49.0,
+        "height": 60.0
+      },
+      "confidence": 0.8982653061224489,
+      "color": "#556473",
+      "corner_radius": 24.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 233.0,
+        "y": 1270.0,
+        "width": 43.0,
+        "height": 57.0
+      },
+      "confidence": 0.8493268053855568,
+      "color": "#485764",
+      "corner_radius": 21.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 126.0,
+        "y": 1299.0,
+        "width": 19.0,
+        "height": 14.0
+      },
+      "confidence": 0.8657894736842104,
+      "color": "#264636",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 354.0,
+        "y": 1300.0,
+        "width": 15.0,
+        "height": 14.0
+      },
+      "confidence": 0.8457142857142856,
+      "color": "#c3cb61",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 386.0,
+        "y": 1312.0,
+        "width": 20.0,
+        "height": 17.0
+      },
+      "confidence": 0.8464705882352941,
+      "color": "#c2cc60",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 26.699093982577324,
+        "y": 1331.6987640857697,
+        "width": 73.90641793608665,
+        "height": 61.250824093818665
+      },
+      "confidence": 1.0,
+      "color": "#e4d5b6",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 772.0,
+        "y": 1341.0,
+        "width": 105.0,
+        "height": 81.0
+      },
+      "confidence": 0.8723456790123456,
+      "color": "#254738",
+      "corner_radius": 40.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 148.45780546963215,
+        "y": 1342.965833067894,
+        "width": 100.61333619058132,
+        "height": 41.725788950920105
+      },
+      "confidence": 1.0,
+      "color": "#b0bd58",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 155.0,
+        "y": 1393.0,
+        "width": 24.0,
+        "height": 17.0
+      },
+      "confidence": 0.8522058823529411,
+      "color": "#a09ea0",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 756.0,
+        "y": 1394.0,
+        "width": 21.0,
+        "height": 21.0
+      },
+      "confidence": 0.8544217687074829,
+      "color": "#335a47",
+      "corner_radius": 10.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 53.0,
+        "y": 1395.0,
+        "width": 18.0,
+        "height": 17.0
+      },
+      "confidence": 0.8686274509803921,
+      "color": "#557a42",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 221.0,
+        "y": 1435.0,
+        "width": 54.0,
+        "height": 42.0
+      },
+      "confidence": 0.8728835978835978,
+      "color": "#83858b",
+      "corner_radius": 21.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 718.3561640381813,
+        "y": 1436.8466221094131,
+        "width": 92.35506957769394,
+        "height": 97.06588959693909
+      },
+      "confidence": 1.0,
+      "color": "#4d5a6b",
+      "corner_radius": 37.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 922.0,
+        "y": 1449.0,
+        "width": 19.0,
+        "height": 18.0
+      },
+      "confidence": 0.8526315789473684,
+      "color": "#3c644b",
+      "corner_radius": 9.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 34.0,
+        "y": 1453.0,
+        "width": 14.0,
+        "height": 17.0
+      },
+      "confidence": 0.8752100840336134,
+      "color": "#446b4c",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 835.0,
+        "y": 1464.0,
+        "width": 106.0,
+        "height": 109.0
+      },
+      "confidence": 0.8577116150250995,
+      "color": "#244637",
+      "corner_radius": 53.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 233.0,
+        "y": 1472.0,
+        "width": 56.0,
+        "height": 55.0
+      },
+      "confidence": 0.8548701298701298,
+      "color": "#767b84",
+      "corner_radius": 27.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 818.0,
+        "y": 1496.0,
+        "width": 17.0,
+        "height": 25.0
+      },
+      "confidence": 0.8545882352941176,
+      "color": "#628647",
+      "corner_radius": 8.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 816.0,
+        "y": 1529.0,
+        "width": 16.0,
+        "height": 14.0
+      },
+      "confidence": 0.8674107142857143,
+      "color": "#486b3c",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 360.0,
+        "y": 1530.0,
+        "width": 15.0,
+        "height": 17.0
+      },
+      "confidence": 0.8447058823529412,
+      "color": "#fbf1dd",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 341.0,
+        "y": 1536.0,
+        "width": 15.0,
+        "height": 16.0
+      },
+      "confidence": 0.8699999999999999,
+      "color": "#f6edd8",
+      "corner_radius": 7.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 122.0,
+        "y": 1539.0,
+        "width": 21.0,
+        "height": 27.0
+      },
+      "confidence": 0.8476190476190475,
+      "color": "#324946",
+      "corner_radius": 10.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 372.0,
+        "y": 1548.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.9166666666666666,
+      "color": "#f7edd7",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 633.0,
+        "y": 1584.0,
+        "width": 37.0,
+        "height": 26.0
+      },
+      "confidence": 0.9055093555093554,
+      "color": "#baa299",
+      "corner_radius": 13.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 534.8396890759468,
+        "y": 1588.2453404963017,
+        "width": 67.36490595340729,
+        "height": 55.9887528270483
+      },
+      "confidence": 1.0,
+      "color": "#e1ada8",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 114.0,
+        "y": 1597.0,
+        "width": 16.0,
+        "height": 20.0
+      },
+      "confidence": 0.8837499999999999,
+      "color": "#2a4e3e",
+      "corner_radius": 8.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 247.0,
+        "y": 1625.0,
+        "width": 18.0,
+        "height": 14.0
+      },
+      "confidence": 0.8535714285714285,
+      "color": "#829c4c",
+      "corner_radius": 7.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    }
+  ]
+}

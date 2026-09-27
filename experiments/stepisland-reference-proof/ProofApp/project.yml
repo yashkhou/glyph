@@ -1,0 +1,44 @@
+name: GlyphStepIslandProof
+options:
+  bundleIdPrefix: com.upmoat.glyphproof
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+targets:
+  GlyphStepIslandProof:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.upmoat.glyphproof.app
+        CODE_SIGNING_ALLOWED: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        TARGETED_DEVICE_FAMILY: "1"
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: Glyph Proof
+        UILaunchScreen: {}
+  GlyphStepIslandProofUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: GlyphStepIslandProof
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.upmoat.glyphproof.uitests
+        CODE_SIGNING_ALLOWED: NO
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  GlyphStepIslandProof:
+    build:
+      targets:
+        GlyphStepIslandProof: all
+    test:
+      targets:
+        - GlyphStepIslandProofUITests

@@ -330,7 +330,7 @@ pub fn property_value_type(property: &str) -> Option<ValueType> {
         "src" => ValueType::Image,
         "fit" | "clip" | "mask" | "fill_paint" | "stroke_paint" | "weight" | "font_style"
         | "ligatures" | "a11y_label" | "a11y_role" | "a11y_hint" | "a11y_labelled_by"
-        | "a11y_hidden" | "a11y_live" | "interactive" => ValueType::Text,
+        | "a11y_hidden" | "a11y_live" | "interactive" | "action" => ValueType::Text,
         "font" => ValueType::Font,
         "content" => ValueType::Text,
         _ => return None,

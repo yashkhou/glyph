@@ -44,6 +44,8 @@ pub struct DisplayAccessibility {
     pub live: Option<String>,
     pub hidden: bool,
     pub interactive: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
     pub reading_order: Option<u64>,
 }
 
@@ -167,6 +169,7 @@ fn accessibility(node: &Node) -> DisplayAccessibility {
         live: txt(node, "a11y_live"),
         hidden: flag("a11y_hidden"),
         interactive: flag("interactive"),
+        action: txt(node, "action"),
         reading_order: node
             .authored
             .props

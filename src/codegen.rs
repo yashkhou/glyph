@@ -87,10 +87,27 @@ fn validate_accessibility(
 ) {
     let accessibility = &item.accessibility;
     if accessibility.interactive {
+        match target {
+            SemanticCodegenTarget::SwiftUi => {
+                if accessibility.action.as_deref().is_none_or(str::is_empty) {
+                    issues.push(issue(
+                        item,
+                        "interactive_action",
+                        "interactive SwiftUI nodes require an explicit non-empty action contract",
+                    ));
+                }
+            }
+            SemanticCodegenTarget::WebCanvas => issues.push(issue(
+                item,
+                "interactive_accessibility",
+                "Canvas codegen has no native interaction contract in v1",
+            )),
+        }
+    } else if accessibility.action.is_some() {
         issues.push(issue(
             item,
-            "interactive_accessibility",
-            "generated static visual code cannot infer an interaction action or control contract",
+            "orphan_action",
+            "action is authored but interactive is not true",
         ));
     }
     if accessibility.labelled_by.is_some() || accessibility.live.is_some() {
@@ -102,7 +119,7 @@ fn validate_accessibility(
     }
     if let Some(role) = accessibility.role.as_deref() {
         match target {
-            SemanticCodegenTarget::SwiftUi if matches!(role, "text" | "image" | "header") => {}
+            SemanticCodegenTarget::SwiftUi if matches!(role, "text" | "image" | "header" | "button") => {}
             SemanticCodegenTarget::WebCanvas => warnings.push(format!(
                 "{}: accessibility role {role:?} is preserved in generated metadata, not a native Canvas semantic node",
                 item.id
@@ -169,19 +186,42 @@ fn validate_item(
     validate_accessibility(item, target, issues, warnings);
 
     match &item.primitive {
-        DisplayPrimitive::Rect { .. } | DisplayPrimitive::Ellipse { .. } | DisplayPrimitive::Group => {}
-        DisplayPrimitive::Text { ligatures, font_variations, letter_spacing, .. } => {
+        DisplayPrimitive::Rect { .. }
+        | DisplayPrimitive::Ellipse { .. }
+        | DisplayPrimitive::Group => {}
+        DisplayPrimitive::Text {
+            ligatures,
+            font_variations,
+            letter_spacing,
+            ..
+        } => {
             if ligatures != "standard" {
-                issues.push(issue(item, "ligatures", "non-standard ligature policy has no stable codegen mapping"));
+                issues.push(issue(
+                    item,
+                    "ligatures",
+                    "non-standard ligature policy has no stable codegen mapping",
+                ));
             }
             if !font_variations.is_empty() {
-                issues.push(issue(item, "variable_fonts", "variable-font axes are outside codegen subset v1"));
+                issues.push(issue(
+                    item,
+                    "variable_fonts",
+                    "variable-font axes are outside codegen subset v1",
+                ));
             }
             if target == SemanticCodegenTarget::WebCanvas && letter_spacing.abs() > f64::EPSILON {
-                issues.push(issue(item, "letter_spacing", "Canvas letter-spacing support is not portable enough for codegen v1"));
+                issues.push(issue(
+                    item,
+                    "letter_spacing",
+                    "Canvas letter-spacing support is not portable enough for codegen v1",
+                ));
             }
             if item.style.stroke.is_some() {
-                issues.push(issue(item, "text_stroke", "outlined text is outside codegen subset v1"));
+                issues.push(issue(
+                    item,
+                    "text_stroke",
+                    "outlined text is outside codegen subset v1",
+                ));
             }
             warnings.push(format!(
                 "{}: generated text keeps Glyph line breaks and frame geometry, but target font shaping may differ from CoreText",
@@ -193,11 +233,33 @@ fn validate_item(
             "path",
             "arbitrary path geometry is deliberately excluded from readable semantic codegen v1",
         )),
-        DisplayPrimitive::Image { .. } => issues.push(issue(
-            item,
-            "image",
-            "image resource ownership/bundling must be explicit before semantic codegen can emit it",
-        )),
+        DisplayPrimitive::Image { src, fit, .. } => match target {
+            SemanticCodegenTarget::SwiftUi => {
+                let Some(asset_name) = src.strip_prefix("asset:") else {
+                    issues.push(issue(
+                        item,
+                        "image",
+                        "SwiftUI image codegen requires explicit asset:<catalog-name> ownership",
+                    ));
+                    return;
+                };
+                if asset_name.is_empty() {
+                    issues.push(issue(item, "image", "asset: image name cannot be empty"));
+                }
+                if !matches!(fit.as_str(), "contain" | "fill" | "cover") {
+                    issues.push(issue(
+                        item,
+                        "image_fit",
+                        format!("unsupported SwiftUI image fit {fit:?}; expected contain, fill, or cover"),
+                    ));
+                }
+            }
+            SemanticCodegenTarget::WebCanvas => issues.push(issue(
+                item,
+                "image",
+                "Web Canvas image ownership/bundling is not in codegen subset v1",
+            )),
+        },
     }
 }
 
@@ -318,6 +380,50 @@ fn swift_accessibility(item: &DisplayItem) -> String {
     out
 }
 
+fn swift_visual_accessibility(item: &DisplayItem) -> String {
+    if item.accessibility.interactive {
+        "\n                .accessibilityHidden(true)".into()
+    } else {
+        swift_accessibility(item)
+    }
+}
+
+fn swift_interaction_overlay(item: &DisplayItem) -> Option<String> {
+    if !item.accessibility.interactive {
+        return None;
+    }
+    let action = item.accessibility.action.as_deref()?;
+    let bounds = item.bounds?;
+    let label = item
+        .accessibility
+        .label
+        .as_deref()
+        .unwrap_or(item.name.as_str());
+    let mut out = format!(
+        "                Button(action: {{ performAction(\"{}\") }}) {{\n                    Color.clear\n                        .frame(width: {}, height: {})\n                        .contentShape(Rectangle())\n                }}\n                .buttonStyle(.plain)\n                .position(x: {}, y: {})\n                .accessibilityIdentifier(\"{}\")\n                .accessibilityLabel(Text(\"{}\"))",
+        swift_escape(action),
+        bounds[2],
+        bounds[3],
+        bounds[0] + bounds[2] / 2.0,
+        bounds[1] + bounds[3] / 2.0,
+        swift_escape(&item.id),
+        swift_escape(label)
+    );
+    if let Some(hint) = &item.accessibility.hint {
+        out.push_str(&format!(
+            "\n                .accessibilityHint(Text(\"{}\"))",
+            swift_escape(hint)
+        ));
+    }
+    if let Some(order) = item.accessibility.reading_order {
+        out.push_str(&format!(
+            "\n                .accessibilitySortPriority({})",
+            -(order as i64)
+        ));
+    }
+    Some(out)
+}
+
 fn swift_shape_style(item: &DisplayItem, shape: &str) -> String {
     let mut out = format!(
         "                {shape}\n                    .fill({})",
@@ -335,7 +441,7 @@ fn swift_shape_style(item: &DisplayItem, shape: &str) -> String {
     out
 }
 fn render_swift_item(item: &DisplayItem) -> String {
-    let accessibility = swift_accessibility(item);
+    let accessibility = swift_visual_accessibility(item);
     match &item.primitive {
         DisplayPrimitive::Rect {
             x,
@@ -364,9 +470,11 @@ fn render_swift_item(item: &DisplayItem) -> String {
         ),
         DisplayPrimitive::Text {
             lines,
+            requested_font,
             postscript_font,
             font,
             size,
+            weight,
             letter_spacing,
             align,
             ..
@@ -383,9 +491,31 @@ fn render_swift_item(item: &DisplayItem) -> String {
                 "right" => "trailing",
                 _ => "leading",
             };
+            let swift_weight = match weight.as_str() {
+                "900" => "black",
+                "800" => "heavy",
+                "700" => "bold",
+                "600" => "semibold",
+                "500" => "medium",
+                "300" => "light",
+                "200" => "ultraLight",
+                "100" => "thin",
+                _ => "regular",
+            };
+            let font_modifier = match requested_font.as_str() {
+                "system-rounded" => format!(
+                    ".font(.system(size: {size}, weight: .{swift_weight}, design: .rounded))"
+                ),
+                "system" | "system-ui" => {
+                    format!(".font(.system(size: {size}, weight: .{swift_weight}))")
+                }
+                _ => format!(
+                    ".font(.custom(\"{}\", size: {size}))",
+                    swift_escape(font_name)
+                ),
+            };
             format!(
-                "                Text(\"{text}\")\n                    .font(.custom(\"{}\", size: {size}))\n                    .tracking({letter_spacing})\n                    .foregroundStyle({})\n                    .multilineTextAlignment(.{alignment})\n                    .frame(width: {}, height: {}, alignment: .{alignment})\n                    .position(x: {}, y: {})\n                    .opacity({}){}",
-                swift_escape(font_name),
+                "                Text(\"{text}\")\n                    {font_modifier}\n                    .tracking({letter_spacing})\n                    .foregroundStyle({})\n                    .multilineTextAlignment(.{alignment})\n                    .frame(width: {}, height: {}, alignment: .{alignment})\n                    .position(x: {}, y: {})\n                    .opacity({}){}",
                 swift_color(
                     item.style.fill.as_deref().or(Some("#000000")),
                     item.style.fill_opacity
@@ -409,19 +539,53 @@ fn render_swift_item(item: &DisplayItem) -> String {
                 accessibility
             )
         }
-        DisplayPrimitive::Path { .. } | DisplayPrimitive::Image { .. } => {
-            unreachable!("validated codegen subset")
+        DisplayPrimitive::Image {
+            x,
+            y,
+            width,
+            height,
+            src,
+            fit,
+        } => {
+            let asset_name = src
+                .strip_prefix("asset:")
+                .expect("validated SwiftUI image asset ownership");
+            let scaling = if fit == "contain" {
+                ".scaledToFit()"
+            } else {
+                ".scaledToFill()"
+            };
+            let clip = if fit == "contain" {
+                ""
+            } else {
+                "\n                    .clipped()"
+            };
+            format!(
+                "                Image(\"{}\")\n                    .resizable()\n                    .renderingMode(.original)\n                    {}\n                    .frame(width: {width}, height: {height}){}\n                    .position(x: {}, y: {})\n                    .opacity({}){}",
+                swift_escape(asset_name),
+                scaling,
+                clip,
+                x + width / 2.0,
+                y + height / 2.0,
+                item.style.opacity,
+                accessibility
+            )
         }
+        DisplayPrimitive::Path { .. } => unreachable!("validated codegen subset"),
     }
 }
 
 pub fn render_swiftui(scene: &Scene) -> Result<String> {
     let display = checked_display(scene, SemanticCodegenTarget::SwiftUi)?;
     let mut out = String::from("import SwiftUI\n\n");
-    out.push_str("public struct GlyphSceneView: View {\n    public init() {}\n\n    public var body: some View {\n        ZStack(alignment: .topLeading) {\n");
+    out.push_str("public struct GlyphSceneView: View {\n    private let performAction: (String) -> Void\n\n    public init(performAction: @escaping (String) -> Void = { _ in }) {\n        self.performAction = performAction\n    }\n\n    public var body: some View {\n        ZStack(alignment: .topLeading) {\n");
     for item in &display.items {
         out.push_str(&render_swift_item(item));
         out.push('\n');
+        if let Some(overlay) = swift_interaction_overlay(item) {
+            out.push_str(&overlay);
+            out.push('\n');
+        }
     }
     out.push_str("        }\n");
     out.push_str(&format!(

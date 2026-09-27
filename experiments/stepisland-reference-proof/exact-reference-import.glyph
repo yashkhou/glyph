@@ -1,0 +1,544 @@
+scene "Vision Import: ChatGPT Image 25 Sept 2026, 15_44_38.png" @id("vision_chatgpt_image_25_sept_2026_15_44_38") {
+  canvas 941 1672 background "#fbf4fd";
+  meta "vision.source" "/Users/joshuakhoury/Pictures/AI-Generated Images/Onboarding Concepts/Onboarding Final Image Set - 2026-09-25/ChatGPT Image 25 Sept 2026, 15_44_38.png";
+  meta "vision.importer" "apple-vision-v1";
+  meta "vision.reconstruction" "bounded-ocr-and-rectangles";
+
+  text text_7e3008d83db3 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 96.241; y 197.299;
+    content "Walking, with"; size 113.752;
+    font "system-ui"; weight "400"; align "start"; fill "#000417";
+  }
+
+  text text_a3a5dc31cf26 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 91.192; y 271.617;
+    content "somewhere to go."; size 105.422;
+    font "system-ui"; weight "400"; align "start"; fill "#00091c";
+  }
+
+  text text_c760a6956ad1 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 96.739; y 339.343;
+    content "Your real steps wake up a tiny world"; size 38.097;
+    font "system-ui"; weight "500"; align "start"; fill "#37536c";
+  }
+
+  text text_d4031fc1541e {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 97.01; y 382.384;
+    content "and keep progress close."; size 35.89;
+    font "system-ui"; weight "600"; align "start"; fill "#374d65";
+  }
+
+  ellipse ellipse_63bb5965510c {
+    role "vision" "inferred" "region";
+    confidence semantics 0.699 geometry 0.932 depth unknown;
+    cx 762; cy 413.5; rx 48; ry 46.5;
+    fill "#fde8ac";
+  }
+
+  rect region_fc57259c85de {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 447.137; y 421.168; width 37.663; height 53.959; rx 0;
+    fill "#c4e7fd";
+  }
+
+  rect region_7449cef0031c {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 103.64; y 473.4; width 54.631; height 64.931; rx 0;
+    fill "#faf8f3";
+  }
+
+  ellipse ellipse_b8b3102d2c18 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.655 geometry 0.873 depth unknown;
+    cx 31.5; cy 621.5; rx 31.5; ry 25.5;
+    fill "#8bae9a";
+  }
+
+  rect region_3bf33337c3d7 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 676.087; y 605.018; width 59.392; height 94.837; rx 0;
+    fill "#d5dfe5";
+  }
+
+  ellipse ellipse_cb8a94401fb0 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.648 geometry 0.864 depth unknown;
+    cx 351.5; cy 678; rx 9.5; ry 8;
+    fill "#648e89";
+  }
+
+  ellipse ellipse_9115ff70eb66 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.635 geometry 0.846 depth unknown;
+    cx 443.5; cy 681.5; rx 11.5; ry 9.5;
+    fill "#6a9381";
+  }
+
+  ellipse ellipse_20271d24095b {
+    role "vision" "inferred" "region";
+    confidence semantics 0.635 geometry 0.847 depth unknown;
+    cx 63.5; cy 702; rx 31.5; ry 28;
+    fill "#c1c47d";
+  }
+
+  ellipse ellipse_83e75bb3da61 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.642 geometry 0.856 depth unknown;
+    cx 7.5; cy 691; rx 7.5; ry 8;
+    fill "#c1c581";
+  }
+
+  ellipse ellipse_f8043bae8e4a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.634 geometry 0.845 depth unknown;
+    cx 543; cy 722.5; rx 14; ry 12.5;
+    fill "#98a2ab";
+  }
+
+  ellipse ellipse_0cbfb413ff9e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.634 geometry 0.845 depth unknown;
+    cx 595.5; cy 724.5; rx 9.5; ry 8.5;
+    fill "#ecd6b2";
+  }
+
+  ellipse ellipse_ef4d469d0fec {
+    role "vision" "inferred" "region";
+    confidence semantics 0.636 geometry 0.848 depth unknown;
+    cx 131.5; cy 775; rx 15.5; ry 11;
+    fill "#597a6c";
+  }
+
+  ellipse ellipse_a5e0c6298ec5 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.648 geometry 0.863 depth unknown;
+    cx 167; cy 785; rx 10; ry 10;
+    fill "#678c7d";
+  }
+
+  ellipse ellipse_ccd427d9a507 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.635 geometry 0.847 depth unknown;
+    cx 178; cy 795.5; rx 11; ry 8.5;
+    fill "#729881";
+  }
+
+  ellipse ellipse_f152bfdd144d {
+    role "vision" "inferred" "region";
+    confidence semantics 0.637 geometry 0.85 depth unknown;
+    cx 341; cy 808; rx 8; ry 12;
+    fill "#557d79";
+  }
+
+  ellipse ellipse_171ec75af00c {
+    role "vision" "inferred" "region";
+    confidence semantics 0.667 geometry 0.889 depth unknown;
+    cx 830; cy 817.5; rx 15; ry 14.5;
+    fill "#5a7a66";
+  }
+
+  rect region_bf625b8dbcc2 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 442.721; y 806.878; width 260.79; height 210.259; rx 54;
+    fill "#b1bc77";
+  }
+
+  ellipse ellipse_50a13cbc1fc8 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.656 geometry 0.874 depth unknown;
+    cx 819; cy 832; rx 8; ry 7;
+    fill "#79936b";
+  }
+
+  ellipse ellipse_61051b8b9c97 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.858 depth unknown;
+    cx 759; cy 839; rx 9; ry 8;
+    fill "#c2c67c";
+  }
+
+  ellipse ellipse_c8f66937f609 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.659 geometry 0.879 depth unknown;
+    cx 420.5; cy 851; rx 11.5; ry 14;
+    fill "#628876";
+  }
+
+  ellipse ellipse_27c3b79a6404 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.663 geometry 0.884 depth unknown;
+    cx 917.5; cy 871.5; rx 23.5; ry 28.5;
+    fill "#4a6858";
+  }
+
+  ellipse ellipse_9ce4cebeb6c8 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.656 geometry 0.874 depth unknown;
+    cx 466.5; cy 863.5; rx 8.5; ry 8.5;
+    fill "#628776";
+  }
+
+  ellipse ellipse_bbe1152e4c95 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.635 geometry 0.846 depth unknown;
+    cx 446; cy 888.5; rx 12; ry 13.5;
+    fill "#88a165";
+  }
+
+  ellipse ellipse_741129f9d0f3 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.859 depth unknown;
+    cx 111; cy 901; rx 13; ry 20;
+    fill "#b6bb72";
+  }
+
+  ellipse ellipse_7c955781d84a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.691 geometry 0.921 depth unknown;
+    cx 9.5; cy 895; rx 9.5; ry 12;
+    fill "#b8bd76";
+  }
+
+  ellipse ellipse_d43068a32e9e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.638 geometry 0.85 depth unknown;
+    cx 33; cy 946; rx 33; ry 39;
+    fill "#587973";
+  }
+
+  ellipse ellipse_cd7aaf6e610a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.642 geometry 0.856 depth unknown;
+    cx 813.5; cy 916.5; rx 10.5; ry 8.5;
+    fill "#fde7c3";
+  }
+
+  rect region_69875b313797 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 269.619; y 929.529; width 78.281; height 43.681; rx 0;
+    fill "#a4b475";
+  }
+
+  ellipse ellipse_923cd29a4a7f {
+    role "vision" "inferred" "region";
+    confidence semantics 0.679 geometry 0.906 depth unknown;
+    cx 393; cy 1030; rx 69; ry 80;
+    fill "#f8ecdb";
+  }
+
+  ellipse ellipse_abeeddbaad4e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.649 geometry 0.866 depth unknown;
+    cx 522; cy 958.5; rx 7; ry 7.5;
+    fill "#779571";
+  }
+
+  ellipse ellipse_f6cdd1f9165c {
+    role "vision" "inferred" "region";
+    confidence semantics 0.642 geometry 0.855 depth unknown;
+    cx 532.5; cy 965.5; rx 10.5; ry 8.5;
+    fill "#75926b";
+  }
+
+  ellipse ellipse_fc06732ac9b5 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.634 geometry 0.845 depth unknown;
+    cx 117; cy 992; rx 32; ry 24;
+    fill "#aaa6a2";
+  }
+
+  ellipse ellipse_fc766a8a8f3b {
+    role "vision" "inferred" "region";
+    confidence semantics 0.633 geometry 0.844 depth unknown;
+    cx 89; cy 1019.5; rx 13; ry 17.5;
+    fill "#767c84";
+  }
+
+  ellipse ellipse_75223f5004c1 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.641 geometry 0.854 depth unknown;
+    cx 870.5; cy 1042.5; rx 25.5; ry 38.5;
+    fill "#3c5d58";
+  }
+
+  ellipse ellipse_0150d45c3af0 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.66 geometry 0.88 depth unknown;
+    cx 315; cy 1037.5; rx 13; ry 13.5;
+    fill "#b4bb74";
+  }
+
+  ellipse ellipse_d8ff951b1997 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.859 depth unknown;
+    cx 719.5; cy 1072.5; rx 24.5; ry 23.5;
+    fill "#737779";
+  }
+
+  ellipse ellipse_b545b1d46651 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.649 geometry 0.865 depth unknown;
+    cx 687.5; cy 1080.5; rx 12.5; ry 13.5;
+    fill "#6c7275";
+  }
+
+  ellipse ellipse_30ca61d36f13 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.638 geometry 0.851 depth unknown;
+    cx 206.5; cy 1083; rx 9.5; ry 7;
+    fill "#aab371";
+  }
+
+  ellipse ellipse_96ad1d8621f9 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.652 geometry 0.87 depth unknown;
+    cx 888; cy 1115.5; rx 12; ry 11.5;
+    fill "#98a669";
+  }
+
+  ellipse ellipse_9e4cc3d48136 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.859 depth unknown;
+    cx 881; cy 1145.5; rx 25; ry 30.5;
+    fill "#3d5d59";
+  }
+
+  ellipse ellipse_90ad24e4296f {
+    role "vision" "inferred" "region";
+    confidence semantics 0.652 geometry 0.87 depth unknown;
+    cx 554.5; cy 1141; rx 7.5; ry 9;
+    fill "#abb36d";
+  }
+
+  ellipse ellipse_7e3e14d6cca8 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.654 geometry 0.872 depth unknown;
+    cx 590; cy 1158; rx 7; ry 10;
+    fill "#92a362";
+  }
+
+  ellipse ellipse_d2ad159b65fd {
+    role "vision" "inferred" "region";
+    confidence semantics 0.635 geometry 0.847 depth unknown;
+    cx 835.5; cy 1162; rx 8.5; ry 13;
+    fill "#6d7176";
+  }
+
+  ellipse ellipse_8e8fd98bbfe6 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.634 geometry 0.845 depth unknown;
+    cx 859; cy 1172.5; rx 18; ry 21.5;
+    fill "#6d7178";
+  }
+
+  ellipse ellipse_9f863089794e {
+    role "vision" "inferred" "region";
+    confidence semantics 0.654 geometry 0.872 depth unknown;
+    cx 570; cy 1185; rx 13; ry 15;
+    fill "#6a8561";
+  }
+
+  ellipse ellipse_721826554f95 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.858 depth unknown;
+    cx 836.5; cy 1202; rx 32.5; ry 27;
+    fill "#3c5c5b";
+  }
+
+  ellipse ellipse_de619a837ec2 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.677 geometry 0.903 depth unknown;
+    cx 931.5; cy 1193.5; rx 9.5; ry 9.5;
+    fill "#f7f1e8";
+  }
+
+  ellipse ellipse_cfe996014b36 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.646 geometry 0.861 depth unknown;
+    cx 795.5; cy 1212.5; rx 8.5; ry 8.5;
+    fill "#676d71";
+  }
+
+  ellipse ellipse_8f9178d0bcd4 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.641 geometry 0.854 depth unknown;
+    cx 927.5; cy 1231.5; rx 13.5; ry 20.5;
+    fill "#587667";
+  }
+
+  ellipse ellipse_2c988af289e7 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.644 geometry 0.859 depth unknown;
+    cx 831.5; cy 1227; rx 12.5; ry 9;
+    fill "#415d5d";
+  }
+
+  ellipse ellipse_ac4c22e8ddc5 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.664 geometry 0.886 depth unknown;
+    cx 159.5; cy 1227.5; rx 10.5; ry 7.5;
+    fill "#6c8b75";
+  }
+
+  ellipse ellipse_187de7f354ef {
+    role "vision" "inferred" "region";
+    confidence semantics 0.637 geometry 0.849 depth unknown;
+    cx 871; cy 1233; rx 10; ry 11;
+    fill "#f7f2e7";
+  }
+
+  ellipse ellipse_594df62b4ae0 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.65 geometry 0.867 depth unknown;
+    cx 894; cy 1234; rx 10; ry 10;
+    fill "#f8f2e7";
+  }
+
+  ellipse ellipse_11a1c14332bb {
+    role "vision" "inferred" "region";
+    confidence semantics 0.662 geometry 0.882 depth unknown;
+    cx 760; cy 1256.5; rx 11; ry 9.5;
+    fill "#a7b184";
+  }
+
+  ellipse ellipse_91cf7a15dd30 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.693 geometry 0.925 depth unknown;
+    cx 854; cy 1256.5; rx 9; ry 8.5;
+    fill "#f9f2e8";
+  }
+
+  ellipse ellipse_53fc32e8b172 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.665 geometry 0.887 depth unknown;
+    cx 901; cy 1260.5; rx 9; ry 7.5;
+    fill "#f8f1e7";
+  }
+
+  ellipse ellipse_51c6c750a397 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.689 geometry 0.919 depth unknown;
+    cx 874.5; cy 1277; rx 7.5; ry 8;
+    fill "#f8f1e7";
+  }
+
+  rect region_301fbcb1900a {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 137.924; y 1277.663; width 115.016; height 102.768; rx 0;
+    fill "#fefefe";
+  }
+
+  rect region_63a0cab5501b {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 381.769; y 1286.656; width 180.79; height 79.785; rx 0;
+    fill "#191a1a";
+  }
+
+  rect region_636e9bb27311 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 681.25; y 1312.605; width 55.489; height 48.422; rx 14;
+    fill "#63666d";
+  }
+
+  text text_c22726c50061 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 477.776; y 1330.995;
+    content "2,246"; size 21.059;
+    font "system-ui"; weight "700"; align "start"; fill "#ffffff";
+  }
+
+  text text_38f9c015d559 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 382.86; y 1418.751;
+    content "Live Activity"; size 30.92;
+    font "system-ui"; weight "400"; align "start"; fill "#000b23";
+  }
+
+  text text_bbd17824c5d6 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 109.068; y 1417.732;
+    content "Apple Health"; size 30.848;
+    font "system-ui"; weight "400"; align "start"; fill "#000216";
+  }
+
+  text text_f5921b29fe0d {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 671.796; y 1417.785;
+    content "Friend walks"; size 26.863;
+    font "system-ui"; weight "700"; align "start"; fill "#00000c";
+  }
+
+  text text_72e0477f62b8 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 120.733; y 1446.766;
+    content "Your real steps"; size 23.483;
+    font "system-ui"; weight "400"; align "start"; fill "#596574";
+  }
+
+  text text_1fc7ba2bd7f6 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 657.245; y 1446.705;
+    content "More fun together"; size 23.254;
+    font "system-ui"; weight "500"; align "start"; fill "#606874";
+  }
+
+  text text_1067449068a3 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 366.214; y 1446.699;
+    content "Progress at a glance"; size 23.686;
+    font "system-ui"; weight "500"; align "start"; fill "#5a626d";
+  }
+
+  rect region_c0bb41bd4337 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 62.305; y 1476.558; width 812.995; height 114.612; rx 0;
+    fill "#2d3e53";
+  }
+
+  rect region_c105d57b07e9 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.75 geometry 1 depth unknown;
+    x 770.939; y 1511.44; width 42.807; height 45.187; rx 0;
+    fill "#2f4055";
+  }
+
+  text text_0348acb4fb81 {
+    role "vision" "inferred" "text";
+    confidence semantics 1 geometry 1 depth unknown;
+    x 468.803; y 1545.624;
+    content "Get started"; size 35.834;
+    font "system-ui"; weight "400"; align "center"; fill "#ffffff";
+  }
+
+  ellipse ellipse_7232a12fa808 {
+    role "vision" "inferred" "region";
+    confidence semantics 0.673 geometry 0.897 depth unknown;
+    cx 421; cy 1619; rx 7; ry 7;
+    fill "#e0dedc";
+  }
+
+}

@@ -1,0 +1,473 @@
+{
+  "schema_version": 1,
+  "source": "/Users/joshuakhoury/Projects/StepIsland/AppStore/FinalScreenshots/01-Walking-Somewhere-To-Go.png",
+  "width": 1320,
+  "height": 2868,
+  "background": "#e8f5fa",
+  "observations": [
+    {
+      "kind": "text",
+      "text": "STEPISLAND",
+      "bbox": {
+        "x": 66.62460514269324,
+        "y": 87.5406975983769,
+        "width": 245.6782341003418,
+        "height": 29.18023265991201
+      },
+      "confidence": 1.0,
+      "color": "#102e68",
+      "corner_radius": null,
+      "font_size": 37.459768775785456,
+      "font_weight": "700",
+      "baseline_y": 111.6968863143209
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1130.0,
+        "y": 94.0,
+        "width": 38.0,
+        "height": 39.0
+      },
+      "confidence": 0.8605263157894736,
+      "color": "#94a572",
+      "corner_radius": 19.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1138.0,
+        "y": 137.0,
+        "width": 53.0,
+        "height": 64.0
+      },
+      "confidence": 0.907576650943396,
+      "color": "#f3ede3",
+      "corner_radius": 26.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "text",
+      "text": "• A TINY WORLD FOR EVERY WALK",
+      "bbox": {
+        "x": 87.44479408262347,
+        "y": 166.3439999894018,
+        "width": 491.35646820068354,
+        "height": 25.411814309692527
+      },
+      "confidence": 1.0,
+      "color": "#102e68",
+      "corner_radius": null,
+      "font_size": 28.83289348755018,
+      "font_weight": "700",
+      "baseline_y": 186.65768195862668
+    },
+    {
+      "kind": "text",
+      "text": "Make walking feel",
+      "bbox": {
+        "x": 70.78862616187484,
+        "y": 232.88160210863944,
+        "width": 895.2681732177734,
+        "height": 100.95360000000002
+      },
+      "confidence": 1.0,
+      "color": "#102e68",
+      "corner_radius": null,
+      "font_size": 110.73069020844984,
+      "font_weight": "700",
+      "baseline_y": 315.3726680219848
+    },
+    {
+      "kind": "text",
+      "text": "like somewhěre to go.",
+      "bbox": {
+        "x": 60.97982291446673,
+        "y": 297.48927621188267,
+        "width": 1110.862897237142,
+        "height": 122.64713869628908
+      },
+      "confidence": 1.0,
+      "color": "#102e68",
+      "corner_radius": null,
+      "font_size": 123.22272303118,
+      "font_weight": "400",
+      "baseline_y": 386.26111947777224
+    },
+    {
+      "kind": "text",
+      "text": "Your steps bring a world - and a companion - to life.",
+      "bbox": {
+        "x": 66.62462123738334,
+        "y": 449.70239927811787,
+        "width": 1049.3375078837078,
+        "height": 46.36155521850594
+      },
+      "confidence": 1.0,
+      "color": "#6078a4",
+      "corner_radius": null,
+      "font_size": 43.35685692355826,
+      "font_weight": "700",
+      "baseline_y": 481.5882643082773
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 190.78349232673645,
+        "y": 716.8411910533905,
+        "width": 934.3030822277068,
+        "height": 1996.2964633852243
+      },
+      "confidence": 1.0,
+      "color": "#dbdcec",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "text",
+      "text": "!!!! • 76",
+      "bbox": {
+        "x": 836.5334641698928,
+        "y": 774.8325761335703,
+        "width": 180.00977675120032,
+        "height": 40.731761718750015
+      },
+      "confidence": 1.0,
+      "color": "#000000",
+      "corner_radius": null,
+      "font_size": 50.92934747044687,
+      "font_weight": "700",
+      "baseline_y": 809.9421504882457
+    },
+    {
+      "kind": "text",
+      "text": "1:01 A",
+      "bbox": {
+        "x": 316.46687497088027,
+        "y": 775.3604656065514,
+        "width": 120.75710137685142,
+        "height": 38.00433468017587
+      },
+      "confidence": 1.0,
+      "color": "#000000",
+      "corner_radius": null,
+      "font_size": 43.61295776468293,
+      "font_weight": "500",
+      "baseline_y": 806.3646235484466
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 226.84118807315824,
+        "y": 1031.357608795166,
+        "width": 863.9720124006271,
+        "height": 340.8060507774353
+      },
+      "confidence": 1.0,
+      "color": "#f3f5f7",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 232.15327978134155,
+        "y": 1371.7645003795624,
+        "width": 852.4400210380554,
+        "height": 783.4704333543777
+      },
+      "confidence": 1.0,
+      "color": "#bdd6e6",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 251.4115619659424,
+        "y": 1392.75736784935,
+        "width": 810.7102417945862,
+        "height": 129.0174822807312
+      },
+      "confidence": 1.0,
+      "color": "#b7d8ec",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 838.0,
+        "y": 1422.0,
+        "width": 81.0,
+        "height": 79.0
+      },
+      "confidence": 0.9246132208157524,
+      "color": "#eedca6",
+      "corner_radius": 39.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 878.0,
+        "y": 1723.0,
+        "width": 28.0,
+        "height": 27.0
+      },
+      "confidence": 0.8746031746031746,
+      "color": "#d8c9b7",
+      "corner_radius": 13.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 581.0,
+        "y": 1852.0,
+        "width": 81.0,
+        "height": 88.0
+      },
+      "confidence": 0.8502104377104377,
+      "color": "#95a574",
+      "corner_radius": 40.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 522.0,
+        "y": 1888.0,
+        "width": 27.0,
+        "height": 19.0
+      },
+      "confidence": 0.8573099415204678,
+      "color": "#d1d7bb",
+      "corner_radius": 9.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1008.0,
+        "y": 1993.0,
+        "width": 19.0,
+        "height": 26.0
+      },
+      "confidence": 0.9149797570850202,
+      "color": "#bbc4cb",
+      "corner_radius": 9.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1007.0,
+        "y": 2017.0,
+        "width": 21.0,
+        "height": 23.0
+      },
+      "confidence": 0.9354037267080744,
+      "color": "#c4ccd2",
+      "corner_radius": 10.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1007.0,
+        "y": 2033.0,
+        "width": 20.0,
+        "height": 26.0
+      },
+      "confidence": 0.8736538461538461,
+      "color": "#ccd2d7",
+      "corner_radius": 10.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 290.0,
+        "y": 2040.0,
+        "width": 33.0,
+        "height": 32.0
+      },
+      "confidence": 0.859375,
+      "color": "#fafaf9",
+      "corner_radius": 16.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 1050.0,
+        "y": 2044.0,
+        "width": 22.0,
+        "height": 23.0
+      },
+      "confidence": 0.8731225296442687,
+      "color": "#dae1dd",
+      "corner_radius": 11.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "ellipse",
+      "text": null,
+      "bbox": {
+        "x": 992.0,
+        "y": 2083.0,
+        "width": 19.0,
+        "height": 19.0
+      },
+      "confidence": 0.8952908587257618,
+      "color": "#dde1e4",
+      "corner_radius": 9.5,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "text",
+      "text": "Walking should feel like",
+      "bbox": {
+        "x": 278.70114133700923,
+        "y": 2196.196090241367,
+        "width": 775.0960350036621,
+        "height": 77.32816116943357
+      },
+      "confidence": 1.0,
+      "color": "#00164d",
+      "corner_radius": null,
+      "font_size": 77.2481404773223,
+      "font_weight": "500",
+      "baseline_y": 2253.11333436077
+    },
+    {
+      "kind": "text",
+      "text": "somewhere to go.",
+      "bbox": {
+        "x": 361.2097405451131,
+        "y": 2277.356361143082,
+        "width": 610.3927040100098,
+        "height": 80.7838569763188
+      },
+      "confidence": 1.0,
+      "color": "#00184e",
+      "corner_radius": null,
+      "font_size": 73.66738923380362,
+      "font_weight": "700",
+      "baseline_y": 2337.7621518235846
+    },
+    {
+      "kind": "text",
+      "text": "Your steps bring a tiny world - and a companion - to life.",
+      "bbox": {
+        "x": 245.6782196546056,
+        "y": 2375.851200398361,
+        "width": 832.8075981140137,
+        "height": 33.602287710571225
+      },
+      "confidence": 1.0,
+      "color": "#576e94",
+      "corner_radius": null,
+      "font_size": 32.06528495261846,
+      "font_weight": "700",
+      "baseline_y": 2400.940077005833
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 219.4340944290161,
+        "y": 2480.89182472229,
+        "width": 863.9223074913025,
+        "height": 134.52940490841866
+      },
+      "confidence": 1.0,
+      "color": "#0f275a",
+      "corner_radius": null,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "rectangle",
+      "text": null,
+      "bbox": {
+        "x": 18.632749244570732,
+        "y": 2487.6098363399506,
+        "width": 146.665932610631,
+        "height": 57.56067878007889
+      },
+      "confidence": 1.0,
+      "color": "#ebf7fa",
+      "corner_radius": 0.0,
+      "font_size": null,
+      "font_weight": null,
+      "baseline_y": null
+    },
+    {
+      "kind": "text",
+      "text": "Continue",
+      "bbox": {
+        "x": 587.0891449218794,
+        "y": 2534.303263883394,
+        "width": 149.98574733734134,
+        "height": 29.596960464477505
+      },
+      "confidence": 1.0,
+      "color": "#ffffff",
+      "corner_radius": null,
+      "font_size": 33.527301415213735,
+      "font_weight": "700",
+      "baseline_y": 2558.1880253435675
+    }
+  ]
+}

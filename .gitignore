@@ -1,7 +1,60 @@
-/target
-/studio/.build/
-/dist/
+# Rust
+/target/
 
-# Generated benchmark/render outputs
-exports/
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editors / IDE user state
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+xcuserdata/
+*.xcuserstate
+
+# Swift / Xcode generated output
+DerivedData/
+.derived/
+.build/
+**/DerivedData/
+**/.derived/
+**/.build/
+**/xcuserdata/
+
+# Generic build / transient output inside experiments
+experiments/**/build/
+experiments/**/Build/
+experiments/**/.swiftpm/
+
+# Logs / temp
+*.log
+*.tmp
+*.temp
+.tmp/
+tmp/
+
+# Local coverage / profiling
+coverage/
+*.profraw
+*.profdata
+
+# Generated repository artifacts
+/dist/
+/exports/
 /benchmarks/generated/
+
+# Compiled Apple application/test products
+*.app/
+*.dSYM/
+*.xcarchive/
+*.xctest/

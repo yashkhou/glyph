@@ -1,0 +1,23 @@
+{
+  "proof": "reference-to-interactive-swiftui",
+  "naiveStructuredImportChangedRatio": 0.39681834030683405,
+  "naiveStructuredImportMeanChannelDelta": 17.717754691264105,
+  "nativeBuild": "succeeded",
+  "interactionTest": "passed",
+  "interactionFlow": [
+    "launch",
+    "tap get started",
+    "verify second page",
+    "tap back",
+    "verify reference screen"
+  ],
+  "flattenedWholeScreenshotUsed": false,
+  "backgroundAsset": "bare scenic artwork",
+  "finalScreenshot": "interactive-native-final-v3.png",
+  "visualParityClaim": "not_exact_yet",
+  "knownDifferences": [
+    "mascot approximation",
+    "feature icon artwork approximation",
+    "typography/spacing not yet pixel-identical"
+  ]
+}

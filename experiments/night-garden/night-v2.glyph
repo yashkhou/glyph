@@ -1,0 +1,33 @@
+scene "Moonlit Garden" @id("moonlit_garden") {
+  canvas 941 1672 background "#020816";
+  image base @id("base") {
+    role "reference";
+    src "reference-day.png";
+    fit "cover";
+    x 0; y 0; width 941; height 1672;
+  }
+  rect night @id("night") {
+    role "night-tone";
+    x 0; y 0; width 941; height 1672;
+    fill "#061A36";
+    opacity 0.56;
+  }
+  rect sky_depth @id("sky_depth") {
+    role "night-tone";
+    x 0; y 0; width 941; height 780;
+    fill "#020A20";
+    opacity 0.14;
+  }
+  ellipse moon @id("moon") {
+    role "moon";
+    cx 694; cy 178; rx 55; ry 55;
+    fill "#EAF6FF";
+    opacity 0.28;
+  }
+  ellipse moon_halo @id("moon_halo") {
+    role "moonlight";
+    cx 694; cy 178; rx 105; ry 105;
+    fill "#9EDBFF";
+    opacity 0.05;
+  }
+}

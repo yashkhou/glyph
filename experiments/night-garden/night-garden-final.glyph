@@ -1,0 +1,9 @@
+scene "Moonlit Garden Final" @id("moonlit_garden_final") {
+  canvas 941 1672 background "#020816";
+  image artwork @id("artwork") {
+    role "night-garden";
+    src "night-raster-v1.png";
+    fit "cover";
+    x 0; y 0; width 941; height 1672;
+  }
+}

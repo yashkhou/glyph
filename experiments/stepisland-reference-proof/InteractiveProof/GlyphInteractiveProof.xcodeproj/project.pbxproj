@@ -1,0 +1,414 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		068902C101BB0904C8A46E2B /* GlyphInteractiveProofApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC51007721F515FA61112AB6 /* GlyphInteractiveProofApp.swift */; };
+		4A285B4292D2767FB68E7AAD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 69ACF67CDA41BF7BCA72E5FE /* Assets.xcassets */; };
+		BB2B07EDF3655A4974621E50 /* GlyphInteractiveProofUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71738C67A33954B400CBA2D3 /* GlyphInteractiveProofUITests.swift */; };
+		D04634DC19BE3C6E65191E61 /* ReferenceExactWelcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FDC8B45166FCF0F873B7E4E /* ReferenceExactWelcome.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		305E053C1A27CDF0783CF9F1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 1A9C083172B0B0C148EE7230 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E7C33DD4D1E0565E35D0512E;
+			remoteInfo = GlyphInteractiveProof;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		1E77C84ACF298344C7FA3D13 /* GlyphInteractiveProofUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = GlyphInteractiveProofUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		3FB5F76FDE318379BB61FAFF /* GlyphInteractiveProof.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = GlyphInteractiveProof.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4FDC8B45166FCF0F873B7E4E /* ReferenceExactWelcome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferenceExactWelcome.swift; sourceTree = "<group>"; };
+		69ACF67CDA41BF7BCA72E5FE /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		71738C67A33954B400CBA2D3 /* GlyphInteractiveProofUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlyphInteractiveProofUITests.swift; sourceTree = "<group>"; };
+		FC51007721F515FA61112AB6 /* GlyphInteractiveProofApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlyphInteractiveProofApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2E1F28D447532D2A12A9D626 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				FC51007721F515FA61112AB6 /* GlyphInteractiveProofApp.swift */,
+				4FDC8B45166FCF0F873B7E4E /* ReferenceExactWelcome.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		6841BC8856CBC793EF3B115A = {
+			isa = PBXGroup;
+			children = (
+				A4E8DFB125253D301FAF40CA /* Resources */,
+				2E1F28D447532D2A12A9D626 /* Sources */,
+				FD8734FFC39EEDCB82EE6103 /* UITests */,
+				7F1FDA883C97D0C7A0600CF7 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7F1FDA883C97D0C7A0600CF7 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3FB5F76FDE318379BB61FAFF /* GlyphInteractiveProof.app */,
+				1E77C84ACF298344C7FA3D13 /* GlyphInteractiveProofUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A4E8DFB125253D301FAF40CA /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				69ACF67CDA41BF7BCA72E5FE /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		FD8734FFC39EEDCB82EE6103 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				71738C67A33954B400CBA2D3 /* GlyphInteractiveProofUITests.swift */,
+			);
+			path = UITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		23A78D28353029B160BEADB7 /* GlyphInteractiveProofUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CCE265B61622795E7B6790BB /* Build configuration list for PBXNativeTarget "GlyphInteractiveProofUITests" */;
+			buildPhases = (
+				BCF91C4F238E58F39D42C4EE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EC4E8153F9CEB4B6636DA901 /* PBXTargetDependency */,
+			);
+			name = GlyphInteractiveProofUITests;
+			packageProductDependencies = (
+			);
+			productName = GlyphInteractiveProofUITests;
+			productReference = 1E77C84ACF298344C7FA3D13 /* GlyphInteractiveProofUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		E7C33DD4D1E0565E35D0512E /* GlyphInteractiveProof */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0EEE3D469DFA231FE74575FF /* Build configuration list for PBXNativeTarget "GlyphInteractiveProof" */;
+			buildPhases = (
+				9D3AE3EE551F7BF45B2ACD55 /* Sources */,
+				C725480036612861C962A1B1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GlyphInteractiveProof;
+			packageProductDependencies = (
+			);
+			productName = GlyphInteractiveProof;
+			productReference = 3FB5F76FDE318379BB61FAFF /* GlyphInteractiveProof.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		1A9C083172B0B0C148EE7230 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					23A78D28353029B160BEADB7 = {
+						TestTargetID = E7C33DD4D1E0565E35D0512E;
+					};
+					E7C33DD4D1E0565E35D0512E = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = A29EEF82201A56920A883275 /* Build configuration list for PBXProject "GlyphInteractiveProof" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 6841BC8856CBC793EF3B115A;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7F1FDA883C97D0C7A0600CF7 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E7C33DD4D1E0565E35D0512E /* GlyphInteractiveProof */,
+				23A78D28353029B160BEADB7 /* GlyphInteractiveProofUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C725480036612861C962A1B1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4A285B4292D2767FB68E7AAD /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		9D3AE3EE551F7BF45B2ACD55 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				068902C101BB0904C8A46E2B /* GlyphInteractiveProofApp.swift in Sources */,
+				D04634DC19BE3C6E65191E61 /* ReferenceExactWelcome.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BCF91C4F238E58F39D42C4EE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB2B07EDF3655A4974621E50 /* GlyphInteractiveProofUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EC4E8153F9CEB4B6636DA901 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E7C33DD4D1E0565E35D0512E /* GlyphInteractiveProof */;
+			targetProxy = 305E053C1A27CDF0783CF9F1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		01EDC0E597783BA7CC7E8DD0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.glyphproof.interactive.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = GlyphInteractiveProof;
+			};
+			name = Debug;
+		};
+		01F939A036D428E4F9D66440 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.glyphproof.interactive;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		854E966735D9A22FD7ABA3AB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.glyphproof.interactive;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		90FFFBA011F8BB2A1E43DD71 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9438D176736C5D1647936D76 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		D9BEB8F6B05A0E47D668D55C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.glyphproof.interactive.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = GlyphInteractiveProof;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0EEE3D469DFA231FE74575FF /* Build configuration list for PBXNativeTarget "GlyphInteractiveProof" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01F939A036D428E4F9D66440 /* Debug */,
+				854E966735D9A22FD7ABA3AB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A29EEF82201A56920A883275 /* Build configuration list for PBXProject "GlyphInteractiveProof" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				90FFFBA011F8BB2A1E43DD71 /* Debug */,
+				9438D176736C5D1647936D76 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CCE265B61622795E7B6790BB /* Build configuration list for PBXNativeTarget "GlyphInteractiveProofUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				01EDC0E597783BA7CC7E8DD0 /* Debug */,
+				D9BEB8F6B05A0E47D668D55C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 1A9C083172B0B0C148EE7230 /* Project object */;
+}

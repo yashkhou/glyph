@@ -1,0 +1,46 @@
+scene "Moonlit Garden" @id("moonlit_garden") {
+  canvas 941 1672 background "#020816";
+
+  paint night_tint linear {
+    from 0% 0%;
+    to 0% 100%;
+    stop 0% "#041126" opacity 72%;
+    stop 42% "#082445" opacity 60%;
+    stop 72% "#071D38" opacity 55%;
+    stop 100% "#020B18" opacity 58%;
+  }
+
+  paint moon_glow radial {
+    center 50% 50%;
+    radius 50%;
+    stop 0% "#E9F7FF" opacity 32%;
+    stop 35% "#BFE8FF" opacity 18%;
+    stop 100% "#7CC8FF" opacity 0%;
+  }
+
+  image base @id("base") {
+    role "reference";
+    src "reference-day.png";
+    fit "cover";
+    x 0; y 0; width 941; height 1672;
+  }
+
+  rect night @id("night") {
+    role "night-tone";
+    x 0; y 0; width 941; height 1672;
+    fill_paint night_tint;
+  }
+
+  ellipse glow @id("moon_glow") {
+    role "moonlight";
+    cx 694; cy 178; rx 118; ry 118;
+    fill_paint moon_glow;
+  }
+
+  ellipse moon @id("moon") {
+    role "moon";
+    cx 694; cy 178; rx 54; ry 54;
+    fill "#EAF6FF";
+    opacity 0.26;
+  }
+}

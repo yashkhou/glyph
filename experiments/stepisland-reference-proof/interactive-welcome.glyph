@@ -1,0 +1,95 @@
+scene "StepIsland Interactive Welcome" @id("stepisland_welcome_proof") {
+  canvas 430 932 background "#fff9ef";
+  meta "reference.mode" "referenceExact";
+  meta "reference.source" "StepIsland onboarding welcome";
+
+  image world @id("world_artwork") {
+    role "artwork" "background";
+    x 0; y 0; width 430; height 932;
+    src "asset:OnboardingWelcomeBackground";
+    fit "fill";
+    a11y_hidden "true";
+  }
+
+  text hero_title @id("hero_title") {
+    role "copy" "headline";
+    x 43; y 86; max_width 352;
+    content "Walking, with\nsomewhere to go.";
+    font "system-rounded"; weight "900"; size 38;
+    line_height 39; letter_spacing -1.2;
+    fill "#071b43";
+    a11y_role "header";
+  }
+  text hero_subtitle @id("hero_subtitle") {
+    role "copy" "body";
+    x 43; y 176; max_width 350;
+    content "Your real steps wake up a tiny world\nand keep progress close.";
+    font "system-rounded"; weight "600"; size 17;
+    line_height 22; fill "#566d87";
+  }
+
+  rect feature_health_icon @id("feature_health_icon") {
+    role "feature" "health";
+    x 56; y 703; width 58; height 52; rx 16;
+    fill "#ffffff"; fill_opacity 0.94;
+  }
+  text feature_health @id("feature_health") {
+    x 85; y 780; max_width 120;
+    content "Apple Health\nYour real steps";
+    font "system-rounded"; weight "700"; size 12;
+    line_height 17; fill "#071b43"; align "center";
+  }
+
+  rect feature_live_icon @id("feature_live_icon") {
+    role "feature" "live_activity";
+    x 186; y 703; width 58; height 52; rx 16;
+    fill "#ffffff"; fill_opacity 0.94;
+  }
+  text feature_live @id("feature_live") {
+    x 215; y 780; max_width 120;
+    content "Live Activity\nProgress at a glance";
+    font "system-rounded"; weight "700"; size 12;
+    line_height 17; fill "#071b43"; align "center";
+  }
+
+  rect feature_friend_icon @id("feature_friend_icon") {
+    role "feature" "friends";
+    x 316; y 703; width 58; height 52; rx 16;
+    fill "#ffffff"; fill_opacity 0.94;
+  }
+  text feature_friend @id("feature_friend") {
+    x 345; y 780; max_width 120;
+    content "Friend walks\nMore fun together";
+    font "system-rounded"; weight "700"; size 12;
+    line_height 17; fill "#071b43"; align "center";
+  }
+
+  rect cta @id("onboarding_primary_action") {
+    role "control" "primary_action";
+    x 40; y 808; width 350; height 58; rx 29;
+    fill "#17324d";
+    interactive "true";
+    action "advance_onboarding";
+    a11y_role "button";
+    a11y_label "Get started";
+    a11y_hint "Continue to the next onboarding screen";
+  }
+  text cta_label @id("cta_label") {
+    role "control_label";
+    x 215; y 845; max_width 350;
+    content "Get started";
+    font "system-rounded"; weight "800"; size 18;
+    line_height 22; fill "#ffffff"; align "center";
+    a11y_hidden "true";
+  }
+
+  ellipse dot_active @id("dot_active") {
+    cx 190; cy 892; rx 4; ry 4; fill "#419cf4";
+    a11y_hidden "true";
+  }
+  ellipse dot_2 @id("dot_2") { cx 210; cy 892; rx 4; ry 4; fill "#d8dce1"; a11y_hidden "true"; }
+  ellipse dot_3 @id("dot_3") { cx 230; cy 892; rx 4; ry 4; fill "#d8dce1"; a11y_hidden "true"; }
+  ellipse dot_4 @id("dot_4") { cx 250; cy 892; rx 4; ry 4; fill "#d8dce1"; a11y_hidden "true"; }
+  ellipse dot_5 @id("dot_5") { cx 270; cy 892; rx 4; ry 4; fill "#d8dce1"; a11y_hidden "true"; }
+  ellipse dot_6 @id("dot_6") { cx 290; cy 892; rx 4; ry 4; fill "#d8dce1"; a11y_hidden "true"; }
+}

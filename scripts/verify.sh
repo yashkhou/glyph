@@ -167,11 +167,8 @@ grep -q '60.0' "$TMP_VERIFY/path-resized-map.json"
 "$BIN" apply exports/sakura_lake.gsir.json 1 '[{"op":"set","node":"tree_right","path":"props.ry","value":305},{"op":"set","node":"tree_right","path":"props.rx","value":142}]' --output exports/sakura_lake.verify-patched.gsir.json
 "$BIN" diff exports/sakura_lake.gsir.json exports/sakura_lake.verify-patched.gsir.json
 "$BIN" render exports/sakura_lake.verify-patched.gsir.json --output exports/sakura_lake.verify-patched.svg
-"$BIN" render-png exports/sakura_lake.verify-patched.gsir.json --output exports/sakura_lake.verify-patched.png
 "$BIN" conformance exports/sakura_lake.verify-patched.gsir.json
 "$BIN" targets exports/sakura_lake.verify-patched.gsir.json
-"$BIN" export-pdf exports/sakura_lake.verify-patched.gsir.json --output exports/sakura_lake.verify-patched.pdf
-[[ "$(head -c 5 exports/sakura_lake.verify-patched.pdf)" == "%PDF-" ]]
 cat > "$TMP_VERIFY/codegen.glyph" <<'EOF'
 scene "Codegen Verify" {
   canvas 320 200 background "#f8f8f8";

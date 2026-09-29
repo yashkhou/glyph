@@ -171,8 +171,6 @@ flowchart LR
     E --> F[Deterministic display list]
     E --> G[Stable object map]
     F --> H[SVG]
-    F --> I[CommanderDraw]
-    I --> J[PNG / PDF]
     F --> K[Bounded SwiftUI]
     F --> L[Bounded Web Canvas]
     E --> M[Inspect / why / query]
@@ -294,8 +292,6 @@ Glyph deliberately separates **visual export** from **semantic code generation**
 | **Display list JSON** | Backend-neutral resolved primitives | Deterministic resolved drawing contract with stable IDs. |
 | **Object map JSON** | Inspection/selection bridge | Stable IDs mapped to display index, kind, roles, bounds and provenance. |
 | **SVG** | Visual/vector export | Deterministic visual output with stable-ID and semantic-role metadata where supported. |
-| **CommanderDraw** | Editable rendering bridge | Converts the display list into CommanderDraw for rendering and export. |
-| **PNG / PDF** | Visual deliverables | Produced through the rendering/export bridge. |
 | **SwiftUI** | Semantic codegen | **Bounded subset.** Unsupported semantics return reasons rather than guessed code. |
 | **Web Canvas** | Semantic codegen | **Bounded subset.** Emits an ES module plus stable object-map behavior for supported scenes. |
 
@@ -406,7 +402,7 @@ Implemented foundations include:
 - authored/derived separation and provenance;
 - weighted linear constraints;
 - deterministic SVG/display-list/object-map output;
-- CommanderDraw lowering and visual export path;
+- deterministic SVG visual export plus bounded SwiftUI/Web Canvas semantic code generation;
 - semantic query / inspect / why tooling;
 - semantic and visual diffs;
 - revision-safe transactions;

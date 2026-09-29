@@ -14,7 +14,7 @@ First read, in this order:
 
 Treat NEW_CHAT_HANDOFF.md + GLYPH_RESEARCH_ARCHIVE.md + CORE_GATE_REPORT.md as the authoritative current context. Do not reset, clean, checkout, discard, or overwrite the existing working tree. It contains the active post-v0.1 implementation work from the previous chat.
 
-After reading, inspect current git status and live Glyph capabilities, create a non-destructive snapshot/checkpoint, then continue the remaining roadmap in dependency order. Do not ask broad questions; fill routine implementation gaps yourself. Keep the research architecture intact: GSIR is canonical, .glyph is the human/agent layer, CommanderDraw is a rendering/export backend rather than Glyph's canonical model, and neural/vision features remain bounded and confidence-bearing rather than silently authoritative.
+After reading, inspect current git status and live Glyph capabilities, create a non-destructive snapshot/checkpoint, then continue the remaining roadmap in dependency order. Do not ask broad questions; fill routine implementation gaps yourself. Keep the research architecture intact: GSIR is canonical, .glyph is the human/agent layer, SVG is the deterministic visual export, bounded codegen targets fail closed, and neural/vision features remain confidence-bearing rather than silently authoritative.
 ```
 
 ## Project identity
@@ -48,7 +48,7 @@ Working today:
 - Named styles, components/instances and seeded deterministic repeat.
 - Assertions, named states and deterministic sampled timeline motion with typed delay, finite repeat, alternate playback, easing and spring presets.
 - Backend-neutral display list + stable object map.
-- SVG output and CommanderDraw `.draw.json`/PNG bridge.
+- Deterministic SVG output plus bounded SwiftUI/Web Canvas semantic codegen.
 - Native macOS Glyph Studio v0.1.
 - Studio source rail, live resolved plate, semantic ledger and intent inspector.
 - Direct rendered-plate click → stable Glyph ID → inspector selection.
@@ -78,8 +78,8 @@ Live `glyph capabilities` reports GSIR canonical, source schema v1 / GSIR schema
 - Gate breadth: 15 artifact classes, 30 surgical edits, 0 unrelated authored mutations.
 - Deep required-chain test: 51 nodes / 51 required constraints resolves fully.
 - Responsive test: constrained objects re-solve without destructive authored rewrites.
-- Determinism: repeated representative GSIR/SVG runs byte-identical; CommanderDraw PNG deterministic in measured environment.
-- Latest release-mode 5,000-node performance gate: `check` **1.4727 s**, `compile` **0.9182 s**, both within the fixed 5.0 s budget.
+- Determinism: repeated representative GSIR/SVG runs are byte-identical in the measured environment.
+- Latest release-mode 5,000-node performance gate passes the fixed 5.0 s budget; use `benchmarks/results/core-gate.json` for the current measured timings.
 - StepIsland cross-representation benchmark completed; a well-authored SwiftUI scene can match Glyph on a simple responsive case, while Glyph adds semantic queryability, stable intent and agent-native editing.
 - Native Studio inspector edit proven end-to-end through real macOS text entry: source changed, preview/bounds updated, `LAST CHANGE` reported the semantic resize, and source was restored cleanly.
 - Native Studio image import proven through the actual file-dialog journey.
@@ -116,7 +116,7 @@ Do not jump straight to arbitrary photo reconstruction or cosmetic Studio featur
 
 1. Replace estimated text metrics with CoreText/HarfBuzz-class shaping and real font measurement.
 2. Add font fallback, kerning, ligatures, variable fonts and deterministic multiline behavior.
-3. Make renderer conformance tests across SVG/CommanderDraw and future direct targets.
+3. Extend renderer conformance tests across SVG and future direct targets.
 4. Add production PDF/SwiftUI/Web/Canvas export paths where semantic export makes sense.
 5. Keep pixel/vector fidelity exports separate from semantic code-generation exports.
 
@@ -143,7 +143,7 @@ The baseline Phase 5 contract is implemented: deterministic timeline sampling in
 ## Non-negotiable architecture rules
 
 - **GSIR is canonical.** The surface DSL is replaceable; the semantic IR is the center.
-- **CommanderDraw is a backend/compatibility/export layer**, not Glyph's source of truth.
+- **SVG is the deterministic visual export**, while GSIR remains Glyph's source of truth.
 - Do not turn Glyph into a generic application language.
 - Do not bind semantic roles to a closed AI-recognition ontology. Keep roles/tags open-ended.
 - Preserve stable IDs across edits, lowering and rendering wherever the target supports identity.
@@ -152,7 +152,7 @@ The baseline Phase 5 contract is implemented: deterministic timeline sampling in
 - Hard geometric constraints outrank heuristic/perceptual objectives; learned critique is advisory.
 - Do not claim visual fidelity from validator scores or schema correctness. Inspect rendered pixels.
 - Do not claim arbitrary-image/photo reconstruction is solved from the bounded UI benchmark.
-- Do not use Figma as the primary architecture. The user explicitly prefers native Glyph/CommanderDraw workflows; Figma is optional interoperability only.
+- Do not use Figma as the primary architecture. Native Glyph workflows remain primary; Figma is optional interoperability only.
 - Prefer surgical source/semantic edits. Redraw/restructure when the governing design relationships are wrong rather than accumulating patches.
 
 ## Current repo caution

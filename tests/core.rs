@@ -144,20 +144,6 @@ fn svg_renders_stroke_and_opacity() {
 }
 
 #[test]
-fn commander_bridge_preserves_stroke_style_and_ids() {
-    let src = r##"scene "Stroke" {
-        canvas 200 120;
-        path edge @id("stable_edge") { role "connector"; d "M10 60 L190 60"; fill "none"; stroke "#123456"; stroke_width 7; }
-    }"##;
-    let mut scene = parse_scene(src, "stroke.glyph").unwrap();
-    solve_scene(&mut scene);
-    let doc = glyph::commander_draw_document(&scene);
-    assert_eq!(doc["nodes"][0]["id"], "stable_edge");
-    assert_eq!(doc["nodes"][0]["style"]["stroke"], "#123456");
-    assert_eq!(doc["nodes"][0]["style"]["strokeWidth"], 7.0);
-}
-
-#[test]
 fn text_layout_wraps_and_has_bounds() {
     let src = r##"scene "Text" {
         canvas 500 300;
@@ -175,7 +161,7 @@ fn text_layout_wraps_and_has_bounds() {
 }
 
 #[test]
-fn svg_and_commander_bridge_share_wrapped_lines() {
+fn svg_preserves_wrapped_lines() {
     let src = r##"scene "Text" { canvas 500 300; text copy @id("copy") { role "copy"; content "one two three four five six"; x 40; y 80; size 30; max_width 140; line_height 38; fill "#000"; } }"##;
     let mut scene = parse_scene(src, "text.glyph").unwrap();
     solve_scene(&mut scene);
@@ -183,14 +169,11 @@ fn svg_and_commander_bridge_share_wrapped_lines() {
     assert!(layout.lines.len() > 1);
     let svg = glyph::render_svg(&scene);
     assert!(svg.matches("<tspan").count() == layout.lines.len());
-    let draw = glyph::commander_draw_document(&scene);
-    assert!(draw["nodes"][0]["text"].as_str().unwrap().contains('\n'));
-    assert_eq!(draw["nodes"][0]["lineHeight"], 38.0);
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn coretext_metrics_flow_through_solver_display_svg_and_bridge() {
+fn coretext_metrics_flow_through_solver_display_and_svg() {
     let src = r##"scene "CoreText" {
         canvas 500 220;
         text copy @id("copy") { content "office AV ffi"; x 32; y 90; size 32; font "Helvetica"; weight "700"; font_style "italic"; max_width 260; fill "#111"; }
@@ -229,12 +212,6 @@ fn coretext_metrics_flow_through_solver_display_svg_and_bridge() {
     let svg = render_svg(&scene);
     assert!(svg.contains("data-glyph-text-engine=\"coretext\""), "{svg}");
     assert!(svg.contains("font-style=\"italic\""), "{svg}");
-    let draw = glyph::commander_draw_document(&scene);
-    assert_eq!(
-        draw["nodes"][0]["glyphTextMetrics"]["shapingEngine"],
-        "coretext"
-    );
-    assert_eq!(draw["nodes"][0]["fontStyle"], "italic");
 }
 
 #[cfg(target_os = "macos")]
@@ -288,14 +265,11 @@ fn coretext_letter_spacing_and_ligature_policy_are_semantic() {
     let svg = render_svg(&spaced);
     assert!(svg.contains("letter-spacing=\"4\""), "{svg}");
     assert!(svg.contains("data-glyph-ligatures=\"none\""), "{svg}");
-    let draw = glyph::commander_draw_document(&spaced);
-    assert_eq!(draw["nodes"][0]["letterSpacing"], 4.0);
-    assert_eq!(draw["nodes"][0]["glyphTextMetrics"]["ligatures"], "none");
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn coretext_font_substitution_is_explicit_and_exported() {
+fn coretext_font_substitution_is_explicit_in_svg() {
     let src = r##"scene "Substitution" { canvas 400 160; text sample @id("sample") { content "Editorial"; x 20; y 80; size 40; font "New York"; weight "600"; fill "#000"; } }"##;
     let mut scene = parse_scene(src, "substitution.glyph").unwrap();
     solve_scene(&mut scene);
@@ -310,16 +284,6 @@ fn coretext_font_substitution_is_explicit_and_exported() {
     assert!(
         svg.contains("data-glyph-font-substituted=\"true\""),
         "{svg}"
-    );
-    let draw = glyph::commander_draw_document(&scene);
-    assert_eq!(
-        draw["nodes"][0]["glyphTextMetrics"]["fontSubstituted"],
-        true
-    );
-    assert!(
-        draw["meta"]["bridgeWarnings"]
-            .to_string()
-            .contains("New York")
     );
 }
 
@@ -354,16 +318,6 @@ fn variable_font_width_axis_changes_coretext_geometry_and_exports() {
     assert!(
         svg.contains("data-glyph-font-variations=\"'wdth' 1.3\""),
         "{svg}"
-    );
-    let draw = glyph::commander_draw_document(&wide);
-    assert_eq!(
-        draw["nodes"][0]["glyphTextMetrics"]["fontVariations"]["wdth"],
-        1.3
-    );
-    assert!(
-        draw["meta"]["bridgeWarnings"]
-            .to_string()
-            .contains("variable-font axes")
     );
 }
 
@@ -1561,7 +1515,7 @@ fn clip_mask_and_paint_references_fail_closed() {
 }
 
 #[test]
-fn typed_linear_and_radial_gradients_lower_to_svg_and_commander_draw() {
+fn typed_linear_and_radial_gradients_lower_to_svg() {
     let src = r##"scene "Paint" {
         canvas 400 240;
         paint sunset linear {
@@ -1601,9 +1555,6 @@ fn typed_linear_and_radial_gradients_lower_to_svg_and_commander_draw() {
     );
     assert!(svg.contains("fill=\"url(#paint-fill-band)\""), "{svg}");
     assert!(svg.contains("stroke=\"url(#paint-stroke-ring)\""), "{svg}");
-    let draw = glyph::commander_draw_document(&scene);
-    assert_eq!(draw["nodes"][0]["style"]["fill"]["type"], "linear");
-    assert_eq!(draw["nodes"][1]["style"]["stroke"]["type"], "radial");
 }
 
 #[test]
@@ -1618,24 +1569,6 @@ fn gradients_reject_invalid_stop_contracts() {
     let unordered = r##"scene "Bad" { canvas 100 100; paint p linear { stop 80% "#000"; stop 20% "#fff"; } rect a { x 0; y 0; width 10; height 10; fill_paint p; } }"##;
     let err = parse_scene(unordered, "unordered.glyph").unwrap_err();
     assert!(err.to_string().contains("nondecreasing offset"), "{err}");
-}
-
-#[test]
-fn commander_bridge_uses_real_image_href_and_affine_matrix() {
-    let src = r#"scene "Media Bridge" { canvas 200 120; image hero @id("hero") { src "assets/hero.png"; fit "cover"; x 10; y 20; width 100; height 60; translate_x 5px; rotate 15deg; scale_x 1.25; scale_y 0.75; origin_x 50px; origin_y 30px; } }"#;
-    let mut scene = parse_scene(src, "media-bridge.glyph").unwrap();
-    solve_scene(&mut scene);
-    let draw = glyph::commander_draw_document(&scene);
-    assert_eq!(draw["nodes"][0]["href"], "assets/hero.png");
-    assert_eq!(draw["nodes"][0]["preserveAspectRatio"], "xMidYMid slice");
-    assert_eq!(
-        draw["nodes"][0]["transform"]["matrix"]
-            .as_array()
-            .unwrap()
-            .len(),
-        6
-    );
-    assert!(draw["nodes"][0].get("src").is_none());
 }
 
 #[test]
@@ -1667,43 +1600,31 @@ fn project_imports_namespace_paints_used_by_components() {
 }
 
 #[test]
-fn renderer_conformance_report_marks_backend_degradation_and_unsupported_features() {
-    let src = r##"scene "Conformance Limits" {
+fn renderer_conformance_report_is_svg_only_and_reports_text_degradation() {
+    let src = r##"scene "Conformance" {
         canvas 320 220;
-        rect clip_shape @id("clip_shape") { x 20; y 20; width 120; height 120; translate_x 5px; }
-        ellipse mask_shape @id("mask_shape") { cx 200; cy 90; rx 55; ry 55; fill "#ffffff"; }
-        rect clipped @id("clipped") { x 20; y 20; width 120; height 120; fill "#ff0000"; clip "clip_shape"; }
-        rect masked @id("masked") { x 150; y 30; width 100; height 100; fill "#0000ff"; mask "mask_shape"; }
+        rect card @id("card") { x 20; y 20; width 120; height 80; fill "#ff0000"; }
+        text label @id("label") { content "Hello"; x 20; y 150; size 24; fill "#111111"; }
     }"##;
-    let mut scene = parse_scene(src, "conformance-limits.glyph").unwrap();
+    let mut scene = parse_scene(src, "conformance.glyph").unwrap();
     let solve = solve_scene(&mut scene);
     assert!(solve.unresolved.is_empty(), "{solve:?}");
     let report = glyph::renderer_conformance_report(&scene);
     assert_eq!(report.display_list_schema, 3);
-    assert_eq!(report.svg.overall, glyph::ConformanceStatus::Exact);
-    assert_eq!(
-        report.commander_draw.overall,
-        glyph::ConformanceStatus::Unsupported
-    );
+    assert_eq!(report.svg.backend, "svg");
+    assert_eq!(report.svg.overall, glyph::ConformanceStatus::Degraded);
     assert!(
         report
-            .commander_draw
+            .svg
             .issues
             .iter()
-            .any(|issue| issue.feature == "mask" && issue.item_id == "masked")
-    );
-    assert!(
-        report
-            .commander_draw
-            .issues
-            .iter()
-            .any(|issue| issue.feature == "transformed_clip" && issue.item_id == "clipped")
+            .any(|issue| { issue.feature == "text_rasterization" && issue.item_id == "label" })
     );
     assert!(!report.svg.pixel_fidelity_guaranteed);
 }
 
 #[test]
-fn svg_and_commander_draw_preserve_supported_display_semantics_from_one_scene() {
+fn svg_preserves_supported_display_semantics_from_one_scene() {
     let src = r##"scene "Backend Contract" {
         canvas 640 360;
         paint band linear { from 0% 0%; to 100% 0%; stop 0% "#ff6633"; stop 100% "#6633ff"; }
@@ -1718,18 +1639,6 @@ fn svg_and_commander_draw_preserve_supported_display_semantics_from_one_scene() 
     let display = glyph::build_display_list(&scene);
     let report = glyph::renderer_conformance_report(&scene);
     assert_eq!(report.svg.overall, glyph::ConformanceStatus::Degraded);
-    assert_eq!(
-        report.commander_draw.overall,
-        glyph::ConformanceStatus::Degraded
-    );
-    assert!(
-        !report
-            .commander_draw
-            .issues
-            .iter()
-            .any(|issue| issue.status == glyph::ConformanceStatus::Unsupported)
-    );
-
     let svg = render_svg(&scene);
     assert!(
         svg.contains("<linearGradient id=\"paint-fill-card\""),
@@ -1746,29 +1655,6 @@ fn svg_and_commander_draw_preserve_supported_display_semantics_from_one_scene() 
         "{svg}"
     );
     assert!(svg.contains("letter-spacing=\"2\""), "{svg}");
-    let draw = glyph::commander_draw_document(&scene);
-    let draw_nodes = draw["nodes"].as_array().unwrap();
-    let card = draw_nodes.iter().find(|node| node["id"] == "card").unwrap();
-    assert_eq!(card["style"]["fill"]["type"], "linear");
-    assert_eq!(card["style"]["stroke"], "#111111");
-    assert_eq!(card["style"]["strokeWidth"], 3.0);
-    assert_eq!(card["style"]["opacity"], 0.8);
-    assert!(card["transform"]["matrix"].is_array());
-    assert!(card["clipPath"].as_str().unwrap().starts_with('M'));
-    let hero = draw_nodes.iter().find(|node| node["id"] == "hero").unwrap();
-    assert_eq!(hero["preserveAspectRatio"], "xMidYMid slice");
-    let label = draw_nodes
-        .iter()
-        .find(|node| node["id"] == "label")
-        .unwrap();
-    assert_eq!(label["letterSpacing"], 2.0);
-    assert_eq!(label["fontStyle"], "italic");
-    assert_eq!(label["glyphTextMetrics"]["ligatures"], "none");
-    assert_eq!(display.object_map["card"].roles, vec!["surface"]);
-    assert_eq!(
-        draw["meta"]["glyphDisplayListSchema"],
-        display.schema_version
-    );
 }
 
 #[test]
@@ -1781,6 +1667,12 @@ fn target_strategy_separates_visual_exports_from_semantic_codegen() {
     solve_scene(&mut scene);
     let report = glyph::target_strategy_report(&scene);
     let target = |name: &str| report.targets.iter().find(|t| t.target == name).unwrap();
+    let names = report
+        .targets
+        .iter()
+        .map(|t| t.target.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(names, vec!["svg", "swiftui", "web_canvas"]);
 
     assert_eq!(
         target("svg").availability,
@@ -1788,11 +1680,6 @@ fn target_strategy_separates_visual_exports_from_semantic_codegen() {
     );
     assert_eq!(target("svg").class, glyph::TargetClass::VisualExport);
     assert_eq!(target("svg").status, glyph::ConformanceStatus::Exact);
-    assert_eq!(
-        target("pdf").availability,
-        glyph::TargetAvailability::Implemented
-    );
-    assert_eq!(target("pdf").class, glyph::TargetClass::VisualExport);
     assert_eq!(
         target("swiftui").availability,
         glyph::TargetAvailability::Implemented
@@ -1887,28 +1774,6 @@ fn semantic_codegen_fails_closed_outside_documented_subset() {
     let err = glyph::render_swiftui(&scene).unwrap_err();
     assert!(err.to_string().contains("mark.path"), "{err}");
     assert!(glyph::render_web_canvas(&scene).is_err());
-}
-
-#[test]
-fn pdf_export_fails_closed_before_backend_for_unsupported_masks() {
-    let src = r##"scene "Masked PDF" {
-        canvas 200 120;
-        ellipse mask_shape @id("mask_shape") { cx 100; cy 60; rx 70; ry 45; fill "#ffffff"; }
-        rect card @id("card") { x 10; y 10; width 180; height 100; fill "#336699"; mask mask_shape; }
-    }"##;
-    let mut scene = parse_scene(src, "masked-pdf.glyph").unwrap();
-    solve_scene(&mut scene);
-    let err = glyph::bridge::export_pdf_with_commander_draw(
-        &scene,
-        "/tmp/glyph-unsupported-mask.pdf",
-        "/definitely/missing/commander-draw",
-    )
-    .unwrap_err();
-    assert!(
-        err.to_string()
-            .contains("cannot faithfully render Glyph mask"),
-        "{err}"
-    );
 }
 
 #[test]
@@ -3181,7 +3046,7 @@ fn component_path_drag_inverts_translation_parameters_and_resize_requires_full_b
 }
 
 #[test]
-fn accessibility_semantics_lower_to_display_svg_and_commander_draw() {
+fn accessibility_semantics_lower_to_display_and_svg() {
     let src = r##"scene "Accessibility" {
         canvas 320 180;
         text label @id("label") { content "Continue"; x 20px; y 40px; size 18px; a11y_hidden "true"; }
@@ -3210,16 +3075,6 @@ fn accessibility_semantics_lower_to_display_svg_and_commander_draw() {
     assert!(svg.contains("tabindex=\"0\""), "{svg}");
     assert!(svg.contains("data-glyph-reading-order=\"1\""), "{svg}");
     assert!(svg.contains("aria-hidden=\"true\""), "{svg}");
-
-    let draw = glyph::commander_draw_document(&scene);
-    assert_eq!(
-        draw["nodes"][0]["glyphAccessibility"]["hidden"],
-        serde_json::json!(true)
-    );
-    assert_eq!(
-        draw["nodes"][1]["glyphAccessibility"]["labelledBy"],
-        serde_json::json!("label")
-    );
 }
 
 #[test]

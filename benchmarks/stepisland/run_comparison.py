@@ -17,7 +17,6 @@ FILES = {
     "glyph": HERE / "sakura_lake.glyph",
     "svg": HERE / "sakura_lake.svg",
     "swiftui": HERE / "SakuraLake.swift",
-    "commander_draw": HERE / "sakura_lake.draw.json",
 }
 
 def sha(path):
@@ -62,7 +61,6 @@ for name, path in FILES.items():
 glyph_text = FILES["glyph"].read_text()
 svg_text = FILES["svg"].read_text()
 swift_text = FILES["swiftui"].read_text()
-draw = json.loads(FILES["commander_draw"].read_text())
 
 report["semantic"]["glyph"] = {
     "stable_ids": glyph_text.count('@id('),
@@ -80,12 +78,6 @@ report["semantic"]["swiftui"] = {
     "stable_ids": swift_text.count('.accessibilityIdentifier('),
     "role_declarations": 0,
     "relationship_variable_references": sum(swift_text.count(x) for x in ['centerX', 'lakeX', 'lakeY']),
-    "machine_role_query": False,
-}
-report["semantic"]["commander_draw"] = {
-    "stable_ids": len(draw.get('nodes', [])),
-    "role_declarations": 0,
-    "relationship_declarations": 0,
     "machine_role_query": False,
 }
 
@@ -106,10 +98,6 @@ swift_edit = swift_text.replace(
 )
 report['surgical_edit']['swiftui'] = diff_stats(swift_text, swift_edit)
 
-draw_edit = json.loads(json.dumps(draw))
-target = next(n for n in draw_edit['nodes'] if n['id'] == 'tree_right')
-target['ry'] = 300
-report['surgical_edit']['commander_draw'] = {"changed_fields": 1, "target_id": "tree_right"}
 
 # Responsive intent: canvas width 1290 -> 1600, title and mascot stay centered.
 with tempfile.TemporaryDirectory() as td:
@@ -152,11 +140,6 @@ report['resize_intent']['svg'] = {
     "dependent_center_fields_to_edit": 2,
     "mechanism": "root width + viewBox width + title x + mascot cx; constraints were lowered away",
 }
-report['resize_intent']['commander_draw'] = {
-    "source_fields_to_change": 3,
-    "dependent_center_fields_to_edit": 2,
-    "mechanism": "document width + title x + mascot cx; interchange geometry has no constraint graph",
-}
 
 # Determinism: five independent Glyph compile and render hashes.
 with tempfile.TemporaryDirectory() as td:
@@ -178,7 +161,6 @@ with tempfile.TemporaryDirectory() as td:
 report['notes'] = [
     "SwiftUI comparison intentionally uses centerX/lakeX/lakeY relationships rather than a coordinate-only implementation.",
     "Raw SVG is Glyph's semantic SVG output, so it retains stable IDs and role metadata; it demonstrates what is lost when constraints are lowered away.",
-    "CommanderDraw comparison retains stable IDs but its interchange document has no Glyph constraint graph or role taxonomy.",
     "Numeric literal counts are descriptive complexity signals, not quality scores.",
 ]
 
@@ -188,7 +170,7 @@ json_path.write_text(json.dumps(report, indent=2) + '\n')
 md = [
     '# Glyph StepIsland Cross-Representation Benchmark',
     '',
-    'This benchmark uses the same Sakura Lake scene across Glyph, raw semantic SVG, relational SwiftUI and CommanderDraw JSON. It reports measured structure and edit behavior; fewer literals are not treated as a visual-quality score.',
+    'This benchmark uses the same Sakura Lake scene across Glyph, raw semantic SVG and relational SwiftUI. It reports measured structure and edit behavior; fewer literals are not treated as a visual-quality score.',
     '',
     '## Representation size',
     '',
@@ -213,8 +195,6 @@ s = report['resize_intent']['swiftui']
 md.append(f"| SwiftUI | {s['source_fields_to_change']} source field | {s['dependent_center_fields_to_edit']} | relational `centerX` preserves centers |")
 s = report['resize_intent']['svg']
 md.append(f"| raw SVG | {s['source_fields_to_change']} fields | {s['dependent_center_fields_to_edit']} | constraints were lowered away |")
-s = report['resize_intent']['commander_draw']
-md.append(f"| CommanderDraw | {s['source_fields_to_change']} fields | {s['dependent_center_fields_to_edit']} | static interchange geometry |")
 
 md += [
     '',
@@ -240,7 +220,6 @@ md += [
     '',
     '- Raw SVG can retain excellent object IDs and semantic role attributes, but does not retain Glyph’s constraint graph after lowering.',
     '- Well-authored SwiftUI can preserve responsive relationships with comparable source-edit locality; Glyph’s additional value is a graphics-specific semantic IR, renderer-neutral object map, revision-safe transactions, semantic queries and deterministic cross-target lowering.',
-    '- CommanderDraw remains a useful editable/rendering backend, while Glyph carries higher-level design intent above it.',
     '- This benchmark supports continuing to Studio/Vision work, but does **not** justify replacing SwiftUI or SVG for every use case.',
     '',
 ]

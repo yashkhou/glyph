@@ -15,11 +15,6 @@
       "bytes": 3016,
       "lines": 54,
       "numeric_literals": 99
-    },
-    "commander_draw": {
-      "bytes": 3353,
-      "lines": 153,
-      "numeric_literals": 125
     }
   },
   "semantic": {
@@ -39,12 +34,6 @@
       "stable_ids": 8,
       "role_declarations": 0,
       "relationship_variable_references": 9,
-      "machine_role_query": false
-    },
-    "commander_draw": {
-      "stable_ids": 9,
-      "role_declarations": 0,
-      "relationship_declarations": 0,
       "machine_role_query": false
     }
   },
@@ -100,10 +89,6 @@
         "             Path { p in",
         "                 p.move(to: CGPoint(x: 0, y: 2200))"
       ]
-    },
-    "commander_draw": {
-      "changed_fields": 1,
-      "target_id": "tree_right"
     }
   },
   "resize_intent": {
@@ -126,11 +111,6 @@
       "source_fields_to_change": 4,
       "dependent_center_fields_to_edit": 2,
       "mechanism": "root width + viewBox width + title x + mascot cx; constraints were lowered away"
-    },
-    "commander_draw": {
-      "source_fields_to_change": 3,
-      "dependent_center_fields_to_edit": 2,
-      "mechanism": "document width + title x + mascot cx; interchange geometry has no constraint graph"
     }
   },
   "determinism": {
@@ -143,7 +123,6 @@
   "notes": [
     "SwiftUI comparison intentionally uses centerX/lakeX/lakeY relationships rather than a coordinate-only implementation.",
     "Raw SVG is Glyph's semantic SVG output, so it retains stable IDs and role metadata; it demonstrates what is lost when constraints are lowered away.",
-    "CommanderDraw comparison retains stable IDs but its interchange document has no Glyph constraint graph or role taxonomy.",
     "Numeric literal counts are descriptive complexity signals, not quality scores."
   ]
 }

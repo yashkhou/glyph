@@ -15,7 +15,8 @@ cargo build --release
 cmp "$OUT/a.glyph" "$OUT/b.glyph"
 cmp "$OUT/a.manifest.json" "$OUT/b.manifest.json"
 "$BIN" check "$OUT/a.glyph"
-"$BIN" render-png "$OUT/a.glyph" --output "$OUT/a.png"
+"$BIN" render "$OUT/a.glyph" --output "$OUT/a.svg"
+grep -q '<svg' "$OUT/a.svg"
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); o=d["observations"]; assert len(o)==9; assert sum(x["kind"]=="ellipse" for x in o)==3; assert sum(x["kind"]=="text" for x in o)==2' "$OUT/a.manifest.json"
 [[ "$(grep -c '^  ellipse ' "$OUT/a.glyph")" -eq 3 ]]
 [[ "$(grep -c '^  text ' "$OUT/a.glyph")" -eq 2 ]]

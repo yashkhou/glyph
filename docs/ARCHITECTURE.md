@@ -14,7 +14,7 @@ source span ↔ typed node ↔ GSIR stable ID ↔ resolved object ↔ rendered e
 2. **GSIR** — canonical semantic scene representation.
 3. **Constraint layer** — authored relationships and priorities.
 4. **Resolved scene** — derived numeric geometry after solving.
-5. **Output layer** — SVG plus CommanderDraw compatibility/rendering.
+5. **Output layer** — deterministic SVG visual export plus bounded semantic code generation.
 
 The DSL is replaceable. GSIR is the architectural center.
 
@@ -124,16 +124,15 @@ Image→Glyph keeps deterministic authored state separate from uncertain recogni
 Glyph does not contain a custom rasterizer. The resolved scene now lowers first into a deterministic **backend-neutral display list**. That list carries stable IDs, roles, resolved primitives, paint, bounds and source provenance plus a stable object map.
 
 - SVG consumes the display list and preserves `id` and `data-glyph-role` metadata.
-- CommanderDraw compatibility consumes the same display list before PNG rendering.
+- SVG is the deterministic visual export over the backend-neutral display list.
 - `glyph conformance <scene>` reports backend semantics as `exact`, `degraded`, or `unsupported` with stable item IDs and reasons. This is a semantic contract, not a pixel-equivalence claim.
-- `.draw.json` remains an output bridge, not canonical Glyph state.
 - Future Skia/Metal/WebGPU renderers should consume this display list rather than reinterpret GSIR independently.
 
 ### Target contract
 
 Glyph separates **visual export** from **semantic code generation**. They are not interchangeable promises.
 
-- Implemented visual exports: SVG, CommanderDraw JSON, PNG, and PDF. PDF lowers through CommanderDraw and fails closed when that bridge cannot preserve required visual semantics.
+- Implemented visual export: SVG. SwiftUI and Web Canvas are separate bounded semantic-codegen targets and fail closed when the scene uses unsupported semantics.
 - `glyph targets <scene>` reports target class, implementation availability, current conformance, lowering path, semantic-ID preservation, editability, and limitations for the actual scene.
 - SwiftUI and Web Canvas are implemented semantic-codegen targets over the bounded subset documented in `docs/CODEGEN.md`. `glyph targets` evaluates the actual scene and reports `exact`, `degraded`, or `unsupported`; emitters refuse unsupported semantics rather than flattening them into misleading native code.
 - Codegen currently covers rect/ellipse/group/basic-text scenes with simple solid styling and stable identity. Paths, images, affine transforms, clips/masks, gradients, advanced typography and interaction contracts remain outside the subset until their native lowering/ownership contracts are explicit. Arbitrary illustration is never claimed to round-trip as readable native UI code.
@@ -164,7 +163,7 @@ The v0.1 plugin exposes read and mutation operations separately:
 - validate: `check`, `project-check`, `test`, `conformance`;
 - mutate/package: `compile`, `project-bundle`, `apply`, `source-set`, `source-drag`, `source-resize`, `constraint-edit`, `constraint-remove`, `constraint-add`, structural group/member operations, `node-reparent`, `node-move`, `component-extract`, and component-instance create/remove/binding edits;
 - compare: `diff`, `visual-diff`;
-- render/export: display-list JSON, SVG, PNG, PDF, CommanderDraw JSON, plus fail-closed bounded SwiftUI and Web Canvas source emitters.
+- render/export: display-list JSON and deterministic SVG, plus fail-closed bounded SwiftUI and Web Canvas source emitters.
 
 Normal agent workflow:
 
@@ -180,11 +179,11 @@ Completed after the fixed effectiveness gate:
 2. reusable styles, components/instances and seeded deterministic repeat;
 3. declarative assertions, named states and deterministic sampled timeline motion with typed delay/repeat/alternate/ease/spring semantics;
 4. surgical `.glyph` source property round-trip editing;
-5. backend-neutral display list + object map now used by both SVG and CommanderDraw output;
+5. backend-neutral display list + object map used by SVG export, semantic inspection and target assessment;
 6. CoreText shaping, fallback/substitution diagnostics, ligature/spacing controls and validated variable-font axes;
-7. renderer conformance plus the target strategy contract, with production PDF export and fail-closed unsupported semantics;
+7. SVG renderer conformance plus the target strategy contract, with fail-closed unsupported semantic codegen;
 8. Phase F direct-manipulation v1: source-authoritative drag/resize planning, compatible multi-equality co-editing, inequality feasibility guards, affine path translation and unrotated path resize without rewriting `d`, rect/image/ellipse/text-frame semantic resize, explicit multi-edge handles, structural groups, unambiguous typed component/path inverse editing, first-class constraint query/edit/add/remove with Studio badges and controls, and validated source-snapshot undo/redo;
-9. first-class accessibility semantics/auditing lowered through display-list, SVG and CommanderDraw metadata;
+9. first-class accessibility semantics/auditing lowered through display-list and SVG ARIA metadata;
 10. production-linked diagnostics/completion plus UTF-16-safe incremental LSP navigation, document-local node rename, transitive project-aware component/style/paint definition/references/cross-file rename, and accessibility quick fixes;
 11. structured/hybrid/auto Vision import so ambiguous imagery preserves raster pixels instead of inventing vector certainty;
 12. content-addressed local project assets plus deterministic staged project bundles over the transitive source dependency closure;

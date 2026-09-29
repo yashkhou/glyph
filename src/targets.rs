@@ -30,13 +30,14 @@ pub struct TargetAssessment {
     pub editable_output: bool,
     pub notes: Vec<String>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct TargetStrategyReport {
     pub display_list_schema: u32,
     pub targets: Vec<TargetAssessment>,
 }
 
-fn from_backend(
+fn visual_target(
     target: &str,
     lowering: &str,
     status: ConformanceStatus,
@@ -89,49 +90,13 @@ pub fn target_strategy_report(scene: &Scene) -> TargetStrategyReport {
         .iter()
         .map(|issue| format!("{}: {}", issue.item_id, issue.detail))
         .collect();
-    let draw_issues = conformance
-        .commander_draw
-        .issues
-        .iter()
-        .map(|issue| format!("{}: {}", issue.item_id, issue.detail))
-        .collect::<Vec<_>>();
-
-    let svg = from_backend(
+    let svg = visual_target(
         "svg",
         "display_list -> native SVG",
         conformance.svg.overall,
         true,
         true,
         svg_issues,
-    );
-    let draw = from_backend(
-        "commander_draw",
-        "display_list -> CommanderDraw document",
-        conformance.commander_draw.overall,
-        true,
-        true,
-        draw_issues.clone(),
-    );
-    let png = from_backend(
-        "png",
-        "display_list -> CommanderDraw -> raster PNG",
-        conformance.commander_draw.overall,
-        false,
-        false,
-        draw_issues.clone(),
-    );
-    let mut pdf_notes = draw_issues;
-    pdf_notes.push(
-        "PDF is a visual deliverable through CommanderDraw's SVG/Skia export path; Glyph semantic IDs are not a PDF round-trip contract"
-            .into(),
-    );
-    let pdf = from_backend(
-        "pdf",
-        "display_list -> CommanderDraw -> PDF export",
-        conformance.commander_draw.overall,
-        false,
-        false,
-        pdf_notes,
     );
     let swiftui = codegen_target(
         scene,
@@ -143,9 +108,8 @@ pub fn target_strategy_report(scene: &Scene) -> TargetStrategyReport {
         SemanticCodegenTarget::WebCanvas,
         "display_list bounded subset -> editable browser Canvas module",
     );
-
     TargetStrategyReport {
         display_list_schema: conformance.display_list_schema,
-        targets: vec![svg, draw, png, pdf, swiftui, web_canvas],
+        targets: vec![svg, swiftui, web_canvas],
     }
 }
